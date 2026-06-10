@@ -1,0 +1,34 @@
+name: publish
+
+# Publishes to npm with provenance whenever you create a GitHub Release.
+# Setup once: create an npm Granular Access Token (Read and write, with
+# "bypass 2FA" enabled) at npmjs.com → Access Tokens, then add it as the
+# repo secret NPM_TOKEN (Settings → Secrets and variables → Actions).
+# After that, every GitHub Release publishes the package automatically and
+# npm shows a verified "published from morphaxl/ultragoal" provenance badge.
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write          # required for npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Verify version matches the release tag
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          echo "package.json: $PKG · release tag: ${{ github.event.release.tag_name }}"
+          test "$PKG" = "${{ github.event.release.tag_name }}"
+      - run: bash tests/gate-test.sh
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
