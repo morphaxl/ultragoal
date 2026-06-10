@@ -28,18 +28,26 @@ Before asking the user anything:
 
 Goals are per-session: each lives in `.ultragoal/goals/active/<slug>/goal.md` with a `session:` field, and the gate enforces only the goal armed by the current session. So a goal active in *another* session does **not** block you — arm a new one freely; concurrent goals across sessions are the intended model. Only if **this same session** already has an active goal do you ask the user to pick: keep the current one (drop this brief), or replace it (pause/abandon per the `ultragoal:stop` protocol, then arm this).
 
-## Phase 2 — Interview, gated by confidence
+## Phase 2 — Interview for the decisions that steer the outcome
 
-Identify what the spec needs that you cannot infer with high confidence from the brief, the repo, and memory. Typical gaps: the measurable end state, scope boundaries (what is explicitly out), who/what the result is for, constraints that must not break, and the rough effort budget.
+Ask **high-leverage questions only** — the forks where different answers produce materially different work. A question earns its place when all three hold: (1) the answer changes what you build, not just cosmetics; (2) you genuinely can't pick it confidently from the brief, repo, and memory; (3) guessing wrong is expensive (rework, wasted budget, wrong direction). If a question fails any of these, don't ask it — answer it yourself from the codebase, or take the obvious default and note it.
 
-Check `interview-depth` in `.ultragoal/config.md` (the user can also override per-goal by saying "quick" or "deep/thorough interview" in the brief):
+The leverage usually lives in these forks (pick the 2–5 that actually matter for *this* brief):
 
-- **quick** (default): ask only the genuine gaps — batched in one AskUserQuestion call where possible, at most ~5 questions, each with concrete options and your recommended default first.
-- **deep**: run multiple rounds, one AskUserQuestion batch per theme — intent and audience → shape of done → scope edges (what's explicitly out) → risks and constraints → how to verify. Skip any round the brief already answers; stop when a round adds nothing new.
+- **Approach** — when there are real alternatives ("rewrite vs patch", "client-side vs server-side", "library X vs Y"), and they lead down different roads. Name the options with their tradeoffs.
+- **Definition of done** — the success bar you can't infer: how good is good enough, what number, what cases must work. This becomes the rubric, so it's the highest-leverage answer in the whole interview.
+- **Scope edges** — what's explicitly *out*. The cheapest way to prevent gold-plating and wasted turns is to ask what NOT to touch.
+- **Priority tradeoff** — when you can't max everything: speed vs robustness vs polish, coverage vs time, ship-now vs do-it-right. Ask which way to lean.
+- **Risk tolerance** — for anything destructive or hard to reverse: how much autonomy, what must you confirm first.
 
-Either way: do not ask things the codebase can answer; go look instead.
+Make every question concrete and decision-shaped: real options (not "what do you think?"), your **recommended default first** with a one-line why, so the user can ratify fast or override deliberately. Give the reason behind the choice, not just the choice. Prefer one batched `AskUserQuestion` call.
 
-If running non-interactively (no user available), skip questions: make the most reasonable assumption for each gap and record every assumption explicitly in the spec's Context section.
+Check `interview-depth` in `.ultragoal/config.md` (the user can override per-goal by saying "quick" or "deep/thorough interview"):
+
+- **quick** (default): one batch, the 2–5 highest-leverage forks.
+- **deep**: multiple rounds, one batch per theme — approach → definition of done → scope edges → priority/risk tradeoffs → how to verify. Skip any round the brief already settles; stop when a round stops changing the plan.
+
+Never ask what the codebase can answer — go look. If running non-interactively (no user), don't ask: make the most defensible call on each fork and record every such decision explicitly in the spec's Context as an assumption.
 
 ## Phase 3 — Draft the spec
 
@@ -54,12 +62,16 @@ Copy the structure from [goal-template.md](goal-template.md) and write the rubri
 
 Before showing the user, adversarially review your own rubric against the anti-pattern list in the guide (vague judgments, unmeasurable criteria, missing stop conditions, no incremental order, checks the repo can't actually run). Fix what you find.
 
-## Phase 4 — Confirm and arm
+## Phase 4 — Recap, confirm, and arm
 
-Show the user two things together, then ask for a yes / edits:
+Before any building, give the user a tight, skimmable recap so they can course-correct while it's still cheap. Four short parts, in plain language:
 
-1. **The plan, briefly** — 3–6 bullets of how you intend to attack this: the order of work, what gets delegated to subagents, where the risk is, and when the verifier runs. Plain language; this is the user's last cheap chance to redirect you.
-2. **The draft spec** — objective, rubric, stop conditions, constraints, budget.
+1. **What I understood you want** — one or two sentences restating the goal in your words (proof you got it right).
+2. **Key decisions** — the forks from the interview and which way each went, including the calls you made yourself (so a wrong assumption surfaces now, not after 15 turns).
+3. **What I'm going to do** — 3–6 bullets: the order of work, what gets delegated to subagents, where the risk is, when the verifier runs.
+4. **How we'll know it's done** — the rubric in brief (the checkable end state and the stop conditions/budget).
+
+Then ask for a yes / edits. Keep it scannable — this is a confirmation, not the full spec dump; the spec file holds the detail.
 
 On yes:
 

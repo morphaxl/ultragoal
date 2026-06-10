@@ -65,9 +65,9 @@ condition ticket too maybe related...
 That's a real, unedited ramble — exactly what it's built for. Ultragoal will:
 
 1. **Consult** project memory and scan your repo with parallel subagents before asking you anything.
-2. **Interview** you — only the 2–5 questions it genuinely can't answer itself, batched, with recommended defaults.
+2. **Interview** you on the decisions that actually steer the outcome — approach, the definition of "done", what's explicitly out of scope, which tradeoff to favor — never trivia it could look up. Each is a concrete fork with a recommended default, so you ratify fast or override deliberately.
 3. **Spec** the goal: objective with the *why*, a rubric where every item has an exact check command, stop conditions, and constraints — then adversarially reviews its own rubric before showing you.
-4. **Show you the plan** — a few plain-language bullets of how it'll attack the work — alongside the spec. You say yes or redirect; this is your last cheap steering moment.
+4. **Recap before building** — what it understood you want, which way each decision went (including calls it made for you), what it's about to do, and how it'll know it's done. Your last cheap moment to redirect, before a single line changes.
 5. **Arm the loop** on your yes. From here a Stop-hook gate blocks the end of every turn and feeds the remaining rubric back, so Claude keeps working without you prompting each step.
 6. **Verify** with a separate fresh-context subagent that re-runs every check itself and tries to *refute* the claims — because models grade their own work generously, and independent verifiers don't.
 7. **Distill** before it's allowed to finish: verified lessons, working patterns, and dead ends are written to `.ultragoal/memory/`, so the next goal starts smarter.
