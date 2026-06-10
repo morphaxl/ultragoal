@@ -131,7 +131,7 @@ const KNOBS = {
   action: {
     question: 'When intent is unclear, should Claude act or ask?',
     options: [
-      { value: 'proactive', label: 'Proactive', hint: 'implement, don’t just suggest (recommended)' },
+      { value: 'proactive', label: 'Proactive', hint: 'recommended — implement, don’t just suggest' },
       { value: 'conservative', label: 'Conservative', hint: 'recommend first, change only when asked' },
     ],
     blocks: {
@@ -144,7 +144,7 @@ const KNOBS = {
   communication: {
     question: 'How should Claude report back?',
     options: [
-      { value: 'lead-with-outcome', label: 'Lead with the outcome', hint: 'TLDR first, detail after (recommended)' },
+      { value: 'lead-with-outcome', label: 'Lead with the outcome', hint: 'recommended — TLDR first, detail after' },
       { value: 'detailed', label: 'Detailed', hint: 'thorough summaries of what and why' },
     ],
     blocks: {
@@ -157,7 +157,7 @@ const KNOBS = {
   scope: {
     question: 'How tightly should Claude scope its changes?',
     options: [
-      { value: 'minimal', label: 'Minimal', hint: 'only what the task requires (recommended)' },
+      { value: 'minimal', label: 'Minimal', hint: 'recommended — only what the task requires' },
       { value: 'elaborate-ok', label: 'Polish welcome', hint: 'reasonable extras, named in the summary' },
     ],
     blocks: {
@@ -170,7 +170,7 @@ const KNOBS = {
   memory: {
     question: 'Share project memory with your team via git?',
     options: [
-      { value: 'git', label: 'Git-committed', hint: 'the team’s compounding brain (recommended)' },
+      { value: 'git', label: 'Git-committed', hint: 'recommended — the team’s compounding brain' },
       { value: 'local', label: 'Local only', hint: 'gitignored, just for you' },
     ],
   },
@@ -327,10 +327,10 @@ s.stop(`Claude Code ${pc.dim((probe.stdout || '').trim().split(' ')[0] || 'found
 let scope = flag('--project') ? 'project' : 'user';
 if (interactive && !flag('--project')) {
   const pick = await p.select({
-    message: 'Install for…',
+    message: 'Where should it be installed?',
     options: [
-      { value: 'user', label: 'Just me', hint: 'all my projects (user scope)' },
-      { value: 'project', label: 'This project & my team', hint: 'lands in .claude/settings.json, shared via git' },
+      { value: 'user', label: 'Globally', hint: 'every project on this machine — recommended' },
+      { value: 'project', label: 'Only this project', hint: 'written to .claude/settings.json, so teammates get it via git' },
     ],
   });
   if (p.isCancel(pick)) bail('Cancelled.');
