@@ -65,6 +65,12 @@ That's a real, unedited ramble — exactly what it's built for. Ultragoal will:
 
 Walk away mid-goal, close the laptop, `/clear` — the goal survives. Next session opens with a banner: *"Active goal 'checkout-latency' — turn 9 of 25."*
 
+## Two kinds of goals
+
+**Task goals** — "build this, fix this, migrate this." Done means the checklist holds.
+
+**Experiment goals** — "make this number better." When the brief is an optimization (build time, latency, bundle size, test runtime), ultragoal compiles it into a measure-and-ratchet loop modeled on Karpathy's [autoresearch](https://github.com/karpathy/autoresearch): establish the baseline first, then one change per experiment — commit, measure with an immutable command, keep only if the number strictly improved, `git reset` if it didn't. Every attempt lands in `results.tsv` (keeps, discards, *and* crashes), and since each row carries its commit hash, any discarded idea's full diff stays recoverable. The verifier re-runs the final measurement itself and fails the goal if the measure command was ever touched — no moving goalposts. The same pattern took Shopify from "one-shot 'make it faster' prompts fail" to a 65% faster build, unattended.
+
 ## Commands
 
 | Command | What it does |
@@ -87,11 +93,13 @@ Everything the plugin produces is plain markdown you own — editable, diffable,
 │   ├── active.md        # the live goal spec: rubric, verification log, decision journal
 │   └── archive/         # finished and abandoned goals (their journals feed memory)
 └── memory/
-    ├── MEMORY.md        # index — its head is injected into every session
-    ├── facts.md         # verified facts, tagged [VERIFIED S<n>] with evidence
+    ├── MEMORY.md        # index + fixed slots (commands, invariants, gotchas, hot files)
+    ├── facts.md         # what's true of this repo
     ├── patterns.md      # approaches that worked, and why
     └── failures.md      # dead ends, so no future session repeats them
 ```
+
+Memory files are two-layered, borrowing the structure of [Karpathy's LLM-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain: **compiled truth above the line** — rewritten as understanding improves — and an **append-only, dated evidence log below it** that is never edited. Every claim carries its provenance — `[VERIFIED · ran the command]`, `[READ · from docs]`, `[INFERRED]`, `[USER-CORRECTION]` — so confident prose can never quietly masquerade as checked fact, and the compaction pass cleans the synthesis without ever touching the evidence. When the repo has moved a lot since memory was last fed, the session banner says so and tells Claude to re-verify before trusting.
 
 Plus a small fenced block in `CLAUDE.md` (shown to you before it's written) wiring the memory protocol and your chosen style knobs.
 
@@ -134,6 +142,8 @@ Always-on context cost is a handful of skill descriptions — on the order of a 
 - Lance Martin (Anthropic), [*Designing loops with Fable 5*](https://x.com/RLanceMartin/article/2064397389189071163) — loops over prompts; rubric design as the skill; verifier subagents over self-critique; the fail → investigate → verify → distill → consult progression this plugin mechanizes.
 - Anthropic, [*Prompting Claude Fable 5*](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5) — the verbatim behavior blocks behind the knobs, the memory protocol, and the verification guidance.
 - Anthropic, [*Prompting best practices*](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) and the [Claude Code docs](https://code.claude.com/docs) on `/goal`, hooks, skills, and sub-agents.
+- Andrej Karpathy, [autoresearch](https://github.com/karpathy/autoresearch) — the experiment ratchet behind experiment goals: baseline-first, strict improvement, keep/revert via git, every attempt journaled, the evaluator immutable.
+- Karpathy's [LLM-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain — the memory architecture: compiled truth over append-only evidence, per-claim provenance, lint-style maintenance.
 
 Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](DESIGN.md).
 

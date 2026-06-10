@@ -38,6 +38,11 @@ If running non-interactively (no user available), skip questions: make the most 
 
 ## Phase 3 — Draft the spec
 
+First decide the goal's **kind**:
+
+- **`task`** (default): success is "this exists and works" — features, fixes, migrations, investigations.
+- **`experiment`**: success is "this number improved" — latency, build time, size, cost, score — and one command can measure it. Read [experiment-guide.md](experiment-guide.md) and compile the spec as a measure-and-ratchet loop instead of a checklist. If the user's brief is an optimize-ask but no reliable measure command exists, the spec's first rubric item is building one.
+
 Copy the structure from [goal-template.md](goal-template.md) and write the rubric following [rubric-guide.md](rubric-guide.md) — read it; rubric quality decides whether this loop converges. A well-designed rubric is doing more work than the model.
 
 Before showing the user, adversarially review your own rubric against the anti-pattern list in the guide (vague judgments, unmeasurable criteria, missing stop conditions, no incremental order, checks the repo can't actually run). Fix what you find.
@@ -47,7 +52,7 @@ Before showing the user, adversarially review your own rubric against the anti-p
 Show the user the draft spec (objective, rubric, stop conditions, constraints, budget) and ask for a yes / edits. On yes:
 
 1. Write it to `.ultragoal/goals/active.md` with `status: active`.
-2. Reset the turn counter: write `0` to `.ultragoal/goals/.turns`.
+2. Reset the loop state: write `0` to `.ultragoal/goals/.turns` and delete `.ultragoal/goals/.rubric-hash` and `.ultragoal/goals/results.tsv` if they exist (they belong to the previous goal).
 3. Tell the user the loop is armed: the Stop gate will keep the session working until the rubric is independently verified and lessons are distilled — and how to bail out (`/ultragoal:stop`, or the turn budget).
 
 Then **begin working immediately**. Do not end the turn with a plan.

@@ -25,10 +25,10 @@ Create (don't overwrite anything that exists):
 ├── config.md            ← from [config-template.md](config-template.md), with chosen knobs
 ├── goals/archive/.gitkeep
 └── memory/
-    ├── MEMORY.md        ← "# Memory index\n\n(empty — first entries come from /ultragoal:remember)"
-    ├── facts.md         ← "# Verified facts\n" header only
-    ├── patterns.md      ← "# Patterns that work\n" header only
-    └── failures.md      ← "# Dead ends\n" header only
+    ├── MEMORY.md        ← from [memory-templates.md](memory-templates.md)
+    ├── facts.md         ←   "      (resolver header + compiled layer + evidence log)
+    ├── patterns.md      ←   "
+    └── failures.md      ←   "
 ```
 
 If memory sharing = local-only, add `.ultragoal/memory/` to `.gitignore`. Either way add `.ultragoal/goals/.turns` and `.ultragoal/memory/.sessions` to `.gitignore` (machine-local counters).

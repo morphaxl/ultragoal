@@ -6,6 +6,7 @@ Write `.ultragoal/goals/active.md` exactly in this shape. Frontmatter fields are
 ---
 slug: <kebab-case-short-name>
 status: active
+kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
 budget: <max turns — default from .ultragoal/config.md, usually 25>
 created: <YYYY-MM-DD>
 ---
@@ -29,6 +30,11 @@ relevant files, links. List every assumption you made on the user's behalf.>
 
 # Constraints
 - <what must NOT change, each with a check the verifier can run>
+
+# Measure   (experiment goals only)
+- command: `<the immutable measure command>`
+- baseline: <recorded after the first run, with run-to-run variance>
+- in scope: <files the loop may edit>  /  out of scope: <the measure command, its data, tests>
 
 # Verification log
 <!-- only the ultragoal:verifier subagent appends here -->

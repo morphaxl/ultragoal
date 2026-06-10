@@ -40,8 +40,18 @@ fi
 
 MEM="$UG/memory/MEMORY.md"
 if [ -r "$MEM" ]; then
-  echo "Project memory index (.ultragoal/memory/MEMORY.md) — consult relevant topic files before substantial work; trust [VERIFIED] facts, re-check [UNVERIFIED] ones:"
+  echo "Project memory index (.ultragoal/memory/MEMORY.md) — consult relevant topic files before substantial work. Trust [VERIFIED] claims; treat [READ] as source-dependent and [INFERRED] as hypotheses to re-check:"
   head -c 8192 "$MEM" 2>/dev/null | head -100
+
+  # Staleness gap analysis: how much has the repo moved since memory was last fed?
+  last_mem="$(grep -rhoE '\[20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$UG/memory" 2>/dev/null | tr -d '[' | sort | tail -1)"
+  if [ -n "$last_mem" ]; then
+    commits_since="$(git -C "$ROOT" rev-list --count --since="$last_mem" HEAD 2>/dev/null)"
+    case "$commits_since" in '' | *[!0-9]*) commits_since=0 ;; esac
+    if [ "$commits_since" -ge 20 ]; then
+      echo "Staleness warning: the newest memory entry is from $last_mem, but the repo has $commits_since commits since then. Claims about touched areas may be outdated — re-verify before relying on them, and consider /ultragoal:compact."
+    fi
+  fi
 fi
 
 if [ "$s" -ge 10 ]; then

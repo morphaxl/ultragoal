@@ -8,8 +8,10 @@ The block is the fixed core + one snippet per chosen knob. All knob snippets are
 <!-- ultragoal:start — managed block; edit knobs via /ultragoal:setup or by hand -->
 ## Memory & goals (ultragoal)
 
-- Before substantial work, consult `.ultragoal/memory/MEMORY.md` and the relevant topic files. Trust `[VERIFIED]` facts; re-check `[UNVERIFIED]` ones before relying on them.
-- When you learn something durable — a correction, a confirmed approach, a dead end — record it per the memory protocol (the `ultragoal:remember` skill). Don't save what the repo or git history already records; update entries rather than duplicating; delete entries that prove wrong.
+- Before substantial work, consult `.ultragoal/memory/MEMORY.md` and the relevant topic files. Trust `[VERIFIED]` claims; treat `[READ]` as only as good as its source and `[INFERRED]` as hypotheses to re-check before relying on them.
+- When you learn something durable — a confirmed approach, a dead end, an expensive derivation you'd hate to redo — record it per the memory protocol (the `ultragoal:remember` skill). Don't save what the repo or git history already records; update entries rather than duplicating.
+- When the user corrects you, write it to memory immediately (`[USER-CORRECTION]`) — it's the highest-confidence signal there is, and it dies with the session if deferred.
+- Memory files are two layers: compiled truth above the `---` (rewrite freely), dated evidence log below it (append-only — never edit or delete evidence lines).
 - Active goals live in `.ultragoal/goals/active.md`. Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item — that sign-off belongs to the fresh-context verifier subagent.
 - Before reporting progress, audit each claim against a tool result from this session. If tests fail, say so with the output; if a step was skipped, say that.
 ```

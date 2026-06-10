@@ -24,6 +24,26 @@ case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
 slug="$(sed -n 's/^slug:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1)"
 [ -n "$slug" ] || slug="active goal"
 
+kind="$(sed -n 's/^kind:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
+[ -n "$kind" ] || kind="task"
+
+# Rubric integrity: the checks are frozen at arm time. A changed rubric is
+# allowed (specs are user-editable) but must be surfaced, never silent.
+hash_file="$UG/goals/.rubric-hash"
+rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
+integrity_note=""
+if [ -n "$rubric_hash" ]; then
+  if [ -r "$hash_file" ]; then
+    prev_hash="$(tr -dc '0-9' < "$hash_file" 2>/dev/null)"
+    if [ -n "$prev_hash" ] && [ "$prev_hash" != "$rubric_hash" ]; then
+      integrity_note="NOTE: the Rubric section changed since it was armed. If this was a deliberate amendment, record it with a reason in the Decision journal; the verifier must re-check ALL items against the new rubric. Weakening a check to pass it is never acceptable."
+      printf '%s' "$rubric_hash" > "$hash_file" 2>/dev/null || true
+    fi
+  else
+    printf '%s' "$rubric_hash" > "$hash_file" 2>/dev/null || true
+  fi
+fi
+
 # ---- turn accounting -------------------------------------------------------
 turns_file="$UG/goals/.turns"
 turns=0
@@ -61,20 +81,33 @@ grep -q 'ULTRAGOAL-VERIFIED: PASS' "$GOAL" 2>/dev/null && verified=1
 if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
   {
     echo "ULTRAGOAL GATE — goal \"$slug\" is still active (turn $turns/$budget). Keep working."
+    [ -n "$integrity_note" ] && echo "$integrity_note"
     if [ "$unchecked_count" -gt 0 ]; then
       echo "Remaining rubric items:"
       printf '%s\n' "$unchecked"
     else
       echo "All rubric boxes are checked, but no independent verification is recorded."
     fi
-    cat <<'EOF'
+    if [ "$kind" = "experiment" ]; then
+      cat <<'EOF'
+Experiment protocol (the ratchet):
+- The measure command is immutable — never edit it, the eval data, or anything it depends on.
+- One change per experiment: edit, git commit, run the measure command, read the number.
+- Strictly better than best-so-far → keep the commit and advance. Equal or worse → git reset back. Crash → log it and move on after at most a couple of fix attempts.
+- Record every attempt in results.tsv (commit, metric, status keep/discard/crash, one-line description) — including the failures.
+- Prefer simple: a tiny gain that adds ugly complexity is not worth it; an equal result from deleting code is a keep.
+- Out of ideas? Re-read the code for unexplored angles, combine previous near-misses, then try something structurally different. Several stale experiments in a row means change approach, not parameters.
+EOF
+    else
+      cat <<'EOF'
 Protocol:
 - Never check a rubric box without evidence from a command you ran this session.
 - Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the Verification log. Only a logged "ULTRAGOAL-VERIFIED: PASS" completes the goal.
 - Log structural decisions and dead ends in the Decision journal as you go.
 - A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.
-You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If you are blocked on input only the user can provide, set "status: paused" with a note and stop.
 EOF
+    fi
+    echo 'You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If a user correction surfaces, write it to memory immediately — it is the highest-confidence signal you will receive. If you are blocked on input only the user can provide, set "status: paused" with a note and stop.'
   } >&2
   exit 2
 fi

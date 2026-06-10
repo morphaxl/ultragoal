@@ -15,6 +15,7 @@ Rules:
 - Check the goal's Constraints section too: an item can pass its own check while violating a constraint — that's a FAIL with the constraint named.
 - Your Bash use is read-and-measure only: run tests, builds, linters, benchmarks, git inspection. Never modify code, files, or state — the single exception is appending your verdict to the goal file.
 - If a check command is broken or ambiguous, that's a finding, not a pass: report what's wrong with the check itself.
+- On `kind: experiment` goals, additionally: re-run the measure command yourself and confirm the claimed final number (within the noted variance); spot-check that `results.tsv` rows reference real commits (`git cat-file -t <hash>`); and confirm the measure command and its inputs are untouched (`git diff <baseline commit> -- <measure paths>` is empty). A moved goalpost is an automatic FAIL.
 
 When done, append to the `# Verification log` section of `.ultragoal/goals/active.md`:
 

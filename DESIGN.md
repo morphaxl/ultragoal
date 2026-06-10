@@ -226,12 +226,29 @@ Always-on regardless of knobs (they're not preferences, they're how Fable 5 work
 - **No model-side "echo your reasoning"** anywhere — triggers Fable 5's `reasoning_extraction` refusals (guide §scaffolding).
 - **No always-on lecture context** — every byte the plugin injects per-session is budgeted and visible.
 
-## 7. Roadmap after v1
+## 7. v0.2 — borrowed from autoresearch and gbrain
 
-npx shim → community-marketplace submission → output styles shipping the readability/prose blocks → scheduled "dreaming" (cloud routine that compacts/curates memory overnight, mirroring CMA's dreaming feature) → optional Outcomes/Managed-Agents bridge for hours-long cloud runs.
+Two more primary sources were studied after v0.1 shipped, and their proven mechanisms folded in.
 
-## 8. Open questions (need owner input)
+### From Karpathy's [autoresearch](https://github.com/karpathy/autoresearch) (the "Karpathy Loop") → experiment goals
 
-1. **GitHub destination** — which account/org, repo name `ultragoal`, public?
-2. **Name** — confirm `ultragoal` (skills read `/ultragoal:goal`, `/ultragoal:status`, …).
-3. **npx shim in v1** or fast-follow?
+For optimize-a-metric briefs, the goal skill now compiles `kind: experiment` specs that run a measure-and-ratchet loop instead of a task checklist:
+
+- **Baseline as the first run, strict-improvement ratchet** — commit *before* measuring so every attempt has a hash; keep only if strictly better (equal counts as worse); `git reset` on regression. The branch is a monotone ratchet of validated wins.
+- **`results.tsv` journal** (commit · metric · keep/discard/crash · description), untracked — every attempt including failures is recoverable via its commit hash even though the branch only keeps winners.
+- **Immutable evaluator** — the measure command and its inputs are frozen at arm time; the verifier `git diff`s them against the baseline commit, and the gate hashes the rubric each turn, surfacing any change with a moved-goalpost warning. (autoresearch's `prepare.py`-is-read-only rule, enforced structurally.)
+- **Simplicity tiebreaker, plateau breaker, crash budget, context hygiene** (output to log files, grep results back) — adapted nearly verbatim from `program.md`. Shopify's generalization validated the pattern beyond ML: one-shot "make it faster" prompts failed where the baseline-anchored metric loop succeeded.
+
+### From Karpathy's [LLM-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain → memory v2
+
+- **Two-layer files** — compiled truth above a `---` (rewritten freely), append-only dated evidence log below (never edited). Compaction only ever touches the compiled layer; the truth stays re-derivable from evidence. This is also the accepted fix for the documented flaw of LLM-authored wikis: synthesis drifting into a "closed epistemic loop that cites itself."
+- **Provenance grammar** — `[VERIFIED Sn · how · date]` / `[READ Sn · source]` / `[INFERRED Sn · confidence]` / `[USER-CORRECTION · date]`; compaction may never launder INFERRED into unqualified fact (gbrain's observed/self-described/inferred triple, adapted for code).
+- **Corrections written immediately** — gbrain's "no batching, no deferring" rule; a user correction is the highest-confidence signal the system receives and would otherwise die with the session.
+- **Resolver headers + fixed slots** — each memory file states what belongs in it and what doesn't (gbrain's MECE filing rule); MEMORY.md ships with `[no data yet]` slots (commands, invariants, gotchas, hot files) so distillation has a target shape.
+- **Staleness gap analysis** — at session start, the newest evidence date is compared against repo activity; ≥20 commits of drift produces an explicit "re-verify before trusting" warning (gbrain's "nothing's been added about Alice since April 22" caveat, for code).
+
+Deliberately not borrowed: autoresearch's never-stop-unbounded loop (our budgets are mandatory — the gate is not allowed to be infinite), gbrain's database/pgvector layer (plain markdown + grep is the right scale for a per-repo memory; gbrain itself says grep works at moderate scale), and entity/relationship graphs (wrong shape for code lessons).
+
+## 8. Roadmap
+
+npx shim → community-marketplace submission → output styles shipping the readability/prose blocks → scheduled "dreaming" (cloud routine that runs the lint/compact pass overnight, mirroring both CMA's dreaming feature and gbrain's nightly consolidation crons) → optional Outcomes/Managed-Agents bridge for hours-long cloud runs.
