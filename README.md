@@ -59,9 +59,10 @@ That's a real, unedited ramble — exactly what it's built for. Ultragoal will:
 1. **Consult** project memory and scan your repo with parallel subagents before asking you anything.
 2. **Interview** you — only the 2–5 questions it genuinely can't answer itself, batched, with recommended defaults.
 3. **Spec** the goal: objective with the *why*, a rubric where every item has an exact check command, stop conditions, and constraints — then adversarially reviews its own rubric before showing you.
-4. **Arm the loop** on your yes. From here a Stop-hook gate blocks the end of every turn and feeds the remaining rubric back, so Claude keeps working without you prompting each step.
-5. **Verify** with a separate fresh-context subagent that re-runs every check itself and tries to *refute* the claims — because models grade their own work generously, and independent verifiers don't.
-6. **Distill** before it's allowed to finish: verified lessons, working patterns, and dead ends are written to `.ultragoal/memory/`, so the next goal starts smarter.
+4. **Show you the plan** — a few plain-language bullets of how it'll attack the work — alongside the spec. You say yes or redirect; this is your last cheap steering moment.
+5. **Arm the loop** on your yes. From here a Stop-hook gate blocks the end of every turn and feeds the remaining rubric back, so Claude keeps working without you prompting each step.
+6. **Verify** with a separate fresh-context subagent that re-runs every check itself and tries to *refute* the claims — because models grade their own work generously, and independent verifiers don't.
+7. **Distill** before it's allowed to finish: verified lessons, working patterns, and dead ends are written to `.ultragoal/memory/`, so the next goal starts smarter.
 
 Walk away mid-goal, close the laptop, `/clear` — the goal survives. Next session opens with a banner: *"Active goal 'checkout-latency' — turn 9 of 25."*
 
@@ -69,16 +70,16 @@ Walk away mid-goal, close the laptop, `/clear` — the goal survives. Next sessi
 
 **Task goals** — "build this, fix this, migrate this." Done means the checklist holds.
 
-Either kind starts from the **rubric library** when the brief matches a known domain: 16 research-backed templates (Next.js features, web performance, accessibility, API quality, security, bug fixes, refactors, test health, CI speed, dependency upgrades, CLI tools, docs, React Native, app-store readiness, realtime stability) with every threshold cited — Core Web Vitals, WCAG 2.2, OWASP 2025, Google's engineering practices — and every item carrying the command that proves it. Templates also point at skills worth pairing (like Vercel's react best-practices skills from skills.sh).
-
 **Experiment goals** — "make this number better." When the brief is an optimization (build time, latency, bundle size, test runtime), ultragoal compiles it into a measure-and-ratchet loop modeled on Karpathy's [autoresearch](https://github.com/karpathy/autoresearch): establish the baseline first, then one change per experiment — commit, measure with an immutable command, keep only if the number strictly improved, `git reset` if it didn't. Every attempt lands in `results.tsv` (keeps, discards, *and* crashes), and since each row carries its commit hash, any discarded idea's full diff stays recoverable. The verifier re-runs the final measurement itself and fails the goal if the measure command was ever touched — no moving goalposts. The same pattern took Shopify from "one-shot 'make it faster' prompts fail" to a 65% faster build, unattended.
+
+Either kind starts from the **rubric library** when the brief matches a known domain: 16 research-backed templates (Next.js features, web performance, accessibility, API quality, security, bug fixes, refactors, test health, CI speed, dependency upgrades, CLI tools, docs, React Native, app-store readiness, realtime stability) with every threshold cited — Core Web Vitals, WCAG 2.2, OWASP 2025, Google's engineering practices — and every item carrying the command that proves it. Templates also recommend skills worth pairing, like Vercel's react best-practices skills from [skills.sh](https://skills.sh).
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `/ultragoal:goal <brain dump>` | The front door: interview → spec → armed loop → execution |
-| `/ultragoal:status` | Dashboard: rubric progress, turn budget, last verdict, memory health |
+| `/ultragoal:status` | Dashboard: rubric progress, turn budget, last verdict, memory health, goal history trends |
 | `/ultragoal:verify` | Independent audit of any goal — fresh-context verifier re-runs every check |
 | `/ultragoal:stop` | Bail out gracefully — pause or abandon, gate releases instantly |
 | `/ultragoal:remember` | Distill lessons from the current session into memory |
@@ -92,8 +93,12 @@ Everything the plugin produces is plain markdown you own — editable, diffable,
 ```
 .ultragoal/
 ├── config.md            # your knobs — hand-editable
+├── stats.tsv            # one row per finished goal: turns, verifier fails, outcome —
+│                        #   "rubric design is the skill"; this is its scoreboard
 ├── goals/
 │   ├── active.md        # the live goal spec: rubric, verification log, decision journal
+│   ├── queue/           # specs waiting their turn (armed when the active goal archives)
+│   ├── results.tsv      # experiment goals: every attempt with its commit hash
 │   └── archive/         # finished and abandoned goals (their journals feed memory)
 └── memory/
     ├── MEMORY.md        # index + fixed slots (commands, invariants, gotchas, hot files)
@@ -165,8 +170,8 @@ Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](
 
 **Can I run it unattended?** Yes — pair with auto mode (per-tool prompts) the same way the official `/goal` docs recommend, or use the native-fallback line headlessly.
 
-**Uninstall?** `claude plugin uninstall ultragoal@ultragoal`. Your `.ultragoal/` state stays — it's yours.
+**Uninstall?** `npx ultragoal uninstall` removes the plugin and marketplace entry; your `.ultragoal/` state stays — it's yours. Add `--purge` to delete a repo's state too (restores CLAUDE.md byte-for-byte).
 
 ## License
 
-MIT
+MIT · [Privacy](PRIVACY.md): no data collection — everything is local markdown in your repo.
