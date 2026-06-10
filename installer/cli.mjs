@@ -53,6 +53,7 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal --project    install at project scope (the default; team-shared via git)
     npx ultragoal --global     install machine-wide (user scope) instead
     npx ultragoal --setup      also pre-configure the current repo (with --yes: defaults)
+    npx ultragoal update       update to the latest version
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
     npx ultragoal uninstall --purge
                                also delete this repo's .ultragoal/ and CLAUDE.md block
@@ -64,6 +65,34 @@ if (flag('--help') || flag('-h')) {
   Docs: ${DOCS}
 `);
   process.exit(0);
+}
+
+// ---------------------------------------------------------------- update ---
+if (args[0] === 'update') {
+  banner();
+  p.intro(pc.bgBlue(pc.black(' ultragoal updater ')));
+  const us = p.spinner();
+  us.start('Refreshing the marketplace');
+  const mk = claude(['plugin', 'marketplace', 'update', MARKETPLACE_NAME]);
+  if (mk.missing) {
+    us.stop(pc.red('Claude Code CLI not found'));
+    bail('Install Claude Code first: https://claude.com/claude-code');
+  }
+  if (mk.status !== 0) {
+    us.stop(pc.dim('Marketplace not registered'));
+    bail('ultragoal doesn\'t look installed — run: npx ultragoal');
+  }
+  us.stop('Marketplace refreshed');
+  us.start('Updating the plugin');
+  const up = claude(['plugin', 'update', PLUGIN]);
+  if ((up.status ?? 1) === 0) {
+    const line = ((up.stdout || '') + (up.stderr || '')).trim().split('\n').pop() || 'Plugin updated';
+    us.stop(line.replace(/^[✔✖]\s*/, ''));
+    p.outro(pc.green('ultragoal is up to date.') + pc.dim(' Restart Claude Code to apply.'));
+    process.exit(0);
+  }
+  us.stop(pc.red('Update failed'));
+  bail('Is it installed? Run: npx ultragoal');
 }
 
 // ------------------------------------------------------------- uninstall ---
