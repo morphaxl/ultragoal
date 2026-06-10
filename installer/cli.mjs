@@ -54,8 +54,9 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal --global     install machine-wide (user scope) instead
     npx ultragoal --setup      also pre-configure the current repo (with --yes: defaults)
     npx ultragoal run "<brief>"
-                               launch Claude Code with the goal armed (auto mode)
-        --dangerous            full autonomy: --dangerously-skip-permissions (no prompts at all)
+                               full-autonomy goal run: launches Claude Code with the goal
+                               armed and --dangerously-skip-permissions (no prompts at all)
+        --safe                 auto mode instead: tools auto-approved, guardrails stay on
         --headless             non-interactive: runs the loop to completion and exits
     npx ultragoal update       update to the latest version
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
@@ -74,7 +75,7 @@ if (flag('--help') || flag('-h')) {
 // ------------------------------------------------------------------- run ---
 if (args[0] === 'run') {
   const rest = args.slice(1);
-  const dangerous = rest.includes('--dangerous');
+  const safe = rest.includes('--safe');
   const headless = rest.includes('--headless');
   const brief = rest.filter((a) => !a.startsWith('--')).join(' ').trim();
   banner();
@@ -93,11 +94,11 @@ if (args[0] === 'run') {
   claude(['plugin', 'install', PLUGIN]);
   s0.stop('Plugin ready');
 
-  const mode = dangerous ? ['--dangerously-skip-permissions'] : ['--permission-mode', 'auto'];
-  if (dangerous) {
-    p.log.warn('FULL AUTONOMY: --dangerously-skip-permissions means Claude can run ANY command without asking. Use inside a container/VM or a repo you can reset — never on a machine with credentials you care about.');
+  const mode = safe ? ['--permission-mode', 'auto'] : ['--dangerously-skip-permissions'];
+  if (safe) {
+    p.log.info('Safe mode: tool calls auto-approved within each turn, permission guardrails stay on.');
   } else {
-    p.log.info('Auto mode: tool calls are approved automatically within each turn; the gate keeps the turns coming. Add --dangerous for zero prompts of any kind.');
+    p.log.warn('Full autonomy (the default): --dangerously-skip-permissions — Claude can run any command without asking until the goal is done. Best in a repo you can reset or a container; add --safe to keep permission guardrails.');
   }
   p.outro(headless ? 'Running the goal loop headless — output follows.' : 'Handing you over to Claude Code with the goal armed.');
   const launch = spawnSync('claude', [...mode, ...(headless ? ['-p'] : []), `/ultragoal:goal ${brief}`], {
