@@ -54,7 +54,12 @@ Before showing the user, adversarially review your own rubric against the anti-p
 
 ## Phase 4 — Confirm and arm
 
-Show the user the draft spec (objective, rubric, stop conditions, constraints, budget) and ask for a yes / edits. On yes:
+Show the user two things together, then ask for a yes / edits:
+
+1. **The plan, briefly** — 3–6 bullets of how you intend to attack this: the order of work, what gets delegated to subagents, where the risk is, and when the verifier runs. Plain language; this is the user's last cheap chance to redirect you.
+2. **The draft spec** — objective, rubric, stop conditions, constraints, budget.
+
+On yes:
 
 1. Write it to `.ultragoal/goals/active.md` with `status: active`, `session: ${CLAUDE_SESSION_ID}` (the gate binds to this session, so other sessions in the repo stay free for side questions), and `verify:` copied from the `verification` knob in `.ultragoal/config.md` (default on; off means the gate accepts a fully checked rubric without the verifier pass).
 2. Reset the loop state: write `0` to `.ultragoal/goals/.turns` and delete `.ultragoal/goals/.rubric-hash` and `.ultragoal/goals/results.tsv` if they exist (they belong to the previous goal).
@@ -70,4 +75,5 @@ Then **begin working immediately**. Do not end the turn with a plan.
 - Log structural decisions and abandoned approaches in the Decision journal as you go — one line each. This feeds distillation.
 - Delegate independent subtasks to subagents and keep working while they run. Intervene if a subagent goes off track.
 - Don't add features, refactor, or introduce abstractions beyond what the rubric requires. The simplest thing that passes an honest check wins.
+- Pause for the user only when the work genuinely requires them: a destructive or irreversible action, a real scope change, or input that only they can provide. If you hit one of these, ask and end the turn, rather than ending on a promise.
 - If you hit a stop condition or are blocked on input only the user can provide, set `status: paused` in the goal file, report honestly where every rubric item stands, and stop.

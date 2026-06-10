@@ -25,4 +25,6 @@ Summarize for the user, leading with what matters:
 - Memory: one line — how many entries the index lists, and whether compaction is due (≥10 sessions).
 - History: if stats.tsv has 3+ rows, one trend line — are goals finishing within budget, and are verifier FAILs per goal trending down? (Rubric design is the skill; this is its scoreboard.)
 
+End with one dim line: preferences live in `.ultragoal/config.md` (hand-edit anytime) — re-run `/ultragoal:setup` to change them interactively.
+
 Keep it short. Do not start working on the goal from this skill — it is a dashboard, not a trigger.

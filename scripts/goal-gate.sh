@@ -153,7 +153,7 @@ EOF
       echo '- Log structural decisions and dead ends in the Decision journal as you go.'
       echo '- A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.'
     fi
-    echo 'You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If a user correction surfaces, write it to memory immediately — it is the highest-confidence signal you will receive. If you are blocked on input only the user can provide, set "status: paused" with a note and stop.'
+    echo 'You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If a user correction surfaces, write it to memory immediately — it is the highest-confidence signal you will receive. You have ample context remaining: do not stop, summarize, or suggest a new session on account of context limits. If you are blocked on input only the user can provide, set "status: paused" with a note and stop.'
   } >&2
   exit 2
 fi
@@ -164,6 +164,6 @@ ULTRAGOAL GATE — rubric complete and independently verified. Final steps befor
 1. Distill lessons into .ultragoal/memory/ (use the ultragoal:remember skill): verified facts, patterns that worked, dead ends to avoid — with provenance tags and evidence.
 2. Append a row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing): today's date, the slug, the kind, "done", turns used (.ultragoal/goals/.turns), the count of FAIL verdicts in the goal file, and the final budget.
 3. Move .ultragoal/goals/active.md to .ultragoal/goals/archive/<slug>.md and set "status: done" in it.
-4. Then report the outcome to the user: lead with what was accomplished, evidence for each rubric item, and anything the user should do next.
+4. Then report the outcome to the user. You have been working without them watching — your final message is their first look at any of it. Write it as a re-grounding, not a continuation of your working thread: the outcome first, evidence for each rubric item, then the one or two things you need from them, each explained as if new. The vocabulary you built up while working is yours, not theirs; leave it behind unless you re-introduce it.
 EOF
 exit 2

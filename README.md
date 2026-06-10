@@ -155,6 +155,10 @@ Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](
 
 **Versus ralph-loop?** Ralph re-feeds the same prompt until a promise appears. Ultragoal adds the parts the article argues matter: a rubric with per-item check commands, an independent verifier, persistent cross-session goals, and enforced distillation into memory.
 
+**Does the verifier have its own context, or does it grade in the same conversation?** Its own. The verifier is a separate subagent with a fresh context window and no access to the worker's reasoning — it only sees the goal file and what it learns by re-running the checks itself. (It does share the Claude Code process and permissions; for absolute isolation on high-stakes work, run `/ultragoal:verify` from a separate headless session as documented in that skill.)
+
+**How do I change my setup answers later?** They're just markdown: edit `.ultragoal/config.md` directly (flip `verification` to `off`, change `scope`, anything), or re-run `/ultragoal:setup` to be re-asked interactively. Changes apply to the next goal you arm.
+
 **Does it spend a lot of tokens?** The gate itself is free (no model call). The loop spends what the work needs — that's the point of goal-directed runs. Budgets cap the blast radius; start small (10–15 turns) to calibrate.
 
 **Can I run it unattended?** Yes — pair with auto mode (per-tool prompts) the same way the official `/goal` docs recommend, or use the native-fallback line headlessly.
