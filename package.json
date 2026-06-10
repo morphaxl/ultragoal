@@ -1,6 +1,6 @@
 {
   "name": "ultragoal",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "Goal loops for Claude Code — tell Claude what you want once; it works until the job is verifiably done, then saves what it learned. One-command interactive installer for the ultragoal plugin.",
   "bin": {
     "ultragoal": "installer/cli.mjs"

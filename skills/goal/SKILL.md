@@ -85,7 +85,7 @@ Then **begin working immediately**. Do not end the turn with a plan.
 
 - When you have enough information to act, act. Do not re-derive facts already established, re-litigate decided questions, or narrate options you will not pursue.
 - Before reporting progress, audit each claim against a tool result from this session. Only report work you can point to evidence for; if something is not yet verified, say so explicitly. If tests fail, say so with the output.
-- Never check a rubric box on your own say-so. Dispatch the `ultragoal:verifier` subagent at the cadence set in `.ultragoal/config.md` (default: before claiming any rubric item); it re-runs the checks and appends the verdict to the Verification log. Check boxes only for items the verifier passed.
+- Never check a rubric box on your own say-so, and never write a `ULTRAGOAL-VERIFIED` line yourself — that verdict is the verifier's alone. Dispatch the `ultragoal:verifier` subagent at the cadence set in `.ultragoal/config.md` (default: before claiming any rubric item), **passing it the exact path to this goal's `goal.md`** so it hashes and signs the right file. It re-runs the checks and appends the verdict. Check boxes only for items the verifier passed.
 - Log structural decisions and abandoned approaches in the Decision journal as you go — one line each. This feeds distillation.
 - Delegate independent subtasks to subagents and keep working while they run. Intervene if a subagent goes off track.
 - Don't add features, refactor, or introduce abstractions beyond what the rubric requires. The simplest thing that passes an honest check wins.
