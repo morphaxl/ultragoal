@@ -29,7 +29,7 @@ LOOP until target met or experiment budget exhausted:
 5. Append a row to results.tsv either way.
 ```
 
-`results.tsv` lives next to the goal file (`.ultragoal/goals/results.tsv`), tab-separated, untracked by git:
+`results.tsv` lives next to the goal file (in the goal's `.ultragoal/goals/active/<slug>/` directory), tab-separated:
 
 ```
 commit	metric	status	description

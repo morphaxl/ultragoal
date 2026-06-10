@@ -179,7 +179,7 @@ What it creates in the **user's repo** (all theirs, all git-friendly):
 ```
 .ultragoal/
 ├── config.md                       # the knobs (§5) — plain markdown, hand-editable
-├── goals/  active.md · archive/ · queue/ · .turns · .rubric-hash · results.tsv
+├── goals/  active/<slug>/{goal.md · .turns · .rubric-hash · results.tsv} (one per session) · archive/
 └── memory/ MEMORY.md (index) · facts.md · patterns.md · failures.md
 CLAUDE.md                           # gains a small fenced block: <!-- ultragoal:start --> … <!-- ultragoal:end -->
 ```

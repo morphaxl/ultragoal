@@ -13,7 +13,7 @@ Build-tool skills (turbo/nx/vite) if present. Find more via `find-skills` on ski
 - [ ] Cache hit rate measured where a cache exists (~70%+ local / ~90%+ remote is practitioner guidance, not an official bar) — check: `npx turbo run build --summarize` → `.turbo/runs/*.json` cache statuses (or nx equivalent)
 - [ ] Real CI wall-time confirms the local result — check: `gh run list -w <workflow> --json createdAt,updatedAt | jq '.[] | ((.updatedAt|fromdate)-(.createdAt|fromdate))'` before/after (no built-in duration field — compute it)
 - [ ] Build output still correct — check: full test suite exits 0 against the optimized build
-- [ ] Every experiment journaled with commit hashes, including discards — check: `cat .ultragoal/goals/results.tsv`
+- [ ] Every experiment journaled with commit hashes, including discards — check: `cat results.tsv`
 - [ ] VERIFIER: independent sign-off recorded in the Verification log
 
 ## Stop conditions

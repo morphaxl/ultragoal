@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ultragoal goal gate — runs as a Stop hook after every turn.
 #
-# While a goal is active and unfinished, blocks the end of the turn (exit 2)
-# and feeds the remaining rubric back to Claude. Releases when the rubric is
-# verified and lessons are distilled, when the goal is paused/abandoned, or
-# when the turn budget runs out.
+# Goals are per-session: each lives in .ultragoal/goals/active/<slug>/goal.md
+# and carries the id of the session that armed it. The gate enforces only THIS
+# session's goal, so different sessions can run different goals in the same repo
+# concurrently, and a session with no goal is never blocked.
 #
 # Invariant: FAIL OPEN. This script must never be able to trap a session.
 # Any unexpected state exits 0.
@@ -18,45 +18,46 @@ while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "$HOME" ]; do
   d="$(dirname "$d")"
 done
 UG="$ROOT/.ultragoal"
-GOAL="$UG/goals/active.md"
+[ -d "$UG/goals" ] || exit 0
 
-[ -r "$GOAL" ] || exit 0
-
-# ---- hook payload: which session is stopping? -------------------------------
+# ---- which session is stopping? --------------------------------------------
 payload=""
 if [ ! -t 0 ]; then payload="$(cat 2>/dev/null)"; fi
 sid="$(printf '%s' "$payload" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
 
-status="$(sed -n 's/^status:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
-[ "$status" = "active" ] || exit 0
+read_field() { sed -n "s/^$2:[[:space:]]*//p" "$1" 2>/dev/null | head -1 | tr -d '[:space:]'; }
 
-# The gate binds to the session that armed the goal. Other sessions in the
-# same repo (side questions, teammates) are left alone; the SessionStart
-# banner tells them how to take the goal over (rebind the session: field).
-goal_sid="$(sed -n 's/^session:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
-if [ -n "$goal_sid" ] && [ -n "$sid" ] && [ "$goal_sid" != "$sid" ]; then
-  exit 0
+# ---- find THIS session's active goal ---------------------------------------
+# New model: active/<slug>/goal.md. Legacy fallback: a single active.md.
+GOAL=""; GDIR=""
+if [ -d "$UG/goals/active" ]; then
+  for gf in "$UG/goals/active"/*/goal.md; do
+    [ -r "$gf" ] || continue
+    [ "$(read_field "$gf" status)" = "active" ] || continue
+    gsid="$(read_field "$gf" session)"
+    if [ -z "$gsid" ] || { [ -n "$sid" ] && [ "$gsid" = "$sid" ]; }; then
+      GOAL="$gf"; GDIR="$(dirname "$gf")"; break
+    fi
+  done
 fi
+if [ -z "$GOAL" ] && [ -r "$UG/goals/active.md" ]; then   # legacy single-file goal
+  if [ "$(read_field "$UG/goals/active.md" status)" = "active" ]; then
+    gsid="$(read_field "$UG/goals/active.md" session)"
+    if [ -z "$gsid" ] || { [ -n "$sid" ] && [ "$gsid" = "$sid" ]; }; then
+      GOAL="$UG/goals/active.md"; GDIR="$UG/goals"
+    fi
+  fi
+fi
+[ -n "$GOAL" ] || exit 0
 
-budget="$(sed -n 's/^budget:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
+budget="$(read_field "$GOAL" budget)"
 case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
+slug="$(read_field "$GOAL" slug)"; [ -n "$slug" ] || slug="active goal"
+kind="$(read_field "$GOAL" kind)"; [ -n "$kind" ] || kind="task"
+verify="$(read_field "$GOAL" verify)"; [ "$verify" = "off" ] || verify="on"
 
-slug="$(sed -n 's/^slug:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1)"
-[ -n "$slug" ] || slug="active goal"
-
-kind="$(sed -n 's/^kind:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
-[ -n "$kind" ] || kind="task"
-
-# verify: off — owner opted out of independent verification for this goal.
-# Checked boxes (with evidence) and distillation still gate the finish.
-verify="$(sed -n 's/^verify:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
-[ "$verify" = "off" ] || verify="on"
-
-# ---- rubric integrity -------------------------------------------------------
-# The checks are frozen at arm time. A changed rubric is allowed (specs are
-# user-editable) but is surfaced, and it invalidates prior verifier verdicts
-# structurally: verdicts carry the rubric hash they were issued against.
-hash_file="$UG/goals/.rubric-hash"
+# ---- rubric integrity (hash frozen at arm; change invalidates verdicts) -----
+hash_file="$GDIR/.rubric-hash"
 rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
 integrity_note=""
 if [ -n "$rubric_hash" ]; then
@@ -72,18 +73,14 @@ if [ -n "$rubric_hash" ]; then
 fi
 
 # ---- turn accounting --------------------------------------------------------
-turns_file="$UG/goals/.turns"
+turns_file="$GDIR/.turns"
 turns=0
-if [ -r "$turns_file" ]; then
-  turns="$(tr -dc '0-9' < "$turns_file" 2>/dev/null)"
-fi
+[ -r "$turns_file" ] && turns="$(tr -dc '0-9' < "$turns_file" 2>/dev/null)"
 case "$turns" in '') turns=0 ;; esac
 turns=$((turns + 1))
 printf '%s' "$turns" > "$turns_file" 2>/dev/null || true
 
-# Budget exhausted: nudge exactly once, then pause the goal and release.
-# Flipping status here keeps state and behavior from diverging — no zombie
-# "active" goal that the gate no longer enforces.
+# Budget exhausted: nudge once, then auto-pause so state and behavior can't diverge.
 if [ "$turns" -gt $((budget + 1)) ]; then
   tmp="$GOAL.tmp.$$"
   if sed 's/^status:[[:space:]]*active/status: paused/' "$GOAL" > "$tmp" 2>/dev/null; then
@@ -110,9 +107,6 @@ unchecked="$(printf '%s\n' "$rubric" | grep '^[[:space:]]*- \[ \]' 2>/dev/null)"
 unchecked_count="$(printf '%s' "$unchecked" | grep -c '\[ \]' 2>/dev/null)"
 case "$unchecked_count" in '' | *[!0-9]*) unchecked_count=0 ;; esac
 
-# Only the LAST verdict counts, and it must be bound to the CURRENT rubric.
-# A PASS from round 1 followed by a FAIL, or a PASS issued against an older
-# rubric, does not release the gate.
 verified=0
 last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
 case "$last_verdict" in
@@ -138,7 +132,7 @@ Experiment protocol (the ratchet):
 - The measure command is immutable — never edit it, the eval data, or anything it depends on.
 - One change per experiment: edit, git commit, run the measure command, read the number.
 - Strictly better than best-so-far → keep the commit and advance. Equal or worse → git reset back. Crash → log it and move on after at most a couple of fix attempts.
-- Record every attempt in results.tsv (commit, metric, status keep/discard/crash, one-line description) — including the failures.
+- Record every attempt in results.tsv (beside this goal file) — commit, metric, status keep/discard/crash, one-line description — including the failures.
 - Prefer simple: a tiny gain that adds ugly complexity is not worth it; an equal result from deleting code is a keep.
 - Out of ideas? Re-read the code for unexplored angles, combine previous near-misses, then try something structurally different. Several stale experiments in a row means change approach, not parameters.
 EOF
@@ -153,17 +147,17 @@ EOF
       echo '- Log structural decisions and dead ends in the Decision journal as you go.'
       echo '- A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.'
     fi
-    echo 'You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If a user correction surfaces, write it to memory immediately — it is the highest-confidence signal you will receive. You have ample context remaining: do not stop, summarize, or suggest a new session on account of context limits. If you are blocked on input only the user can provide, set "status: paused" with a note and stop.'
+    echo "You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If a user correction surfaces, write it to memory immediately — it is the highest-confidence signal you will receive. You have ample context remaining: do not stop, summarize, or suggest a new session on account of context limits. If you are blocked on input only the user can provide, set \"status: paused\" with a note and stop. (This goal's files are in $GDIR.)"
   } >&2
   exit 2
 fi
 
 # ---- rubric verified: enforce distillation, then release --------------------
-cat >&2 <<'EOF'
+cat >&2 <<EOF
 ULTRAGOAL GATE — rubric complete and independently verified. Final steps before you finish:
 1. Distill lessons into .ultragoal/memory/ (use the ultragoal:remember skill): verified facts, patterns that worked, dead ends to avoid — with provenance tags and evidence.
-2. Append a row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing): today's date, the slug, the kind, "done", turns used (.ultragoal/goals/.turns), the count of FAIL verdicts in the goal file, and the final budget.
-3. Move .ultragoal/goals/active.md to .ultragoal/goals/archive/<slug>.md and set "status: done" in it.
-4. Then report the outcome to the user. You have been working without them watching — your final message is their first look at any of it. Write it as a re-grounding, not a continuation of your working thread: the outcome first, evidence for each rubric item, then the one or two things you need from them, each explained as if new. The vocabulary you built up while working is yours, not theirs; leave it behind unless you re-introduce it.
+2. Append a row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing): today's date, "$slug", "$kind", "done", turns used ($turns), the count of FAIL verdicts in the goal file, and $budget.
+3. Move $GOAL to .ultragoal/goals/archive/$slug.md (set "status: done" in it) and remove $GDIR.
+4. Then report the outcome to the user. You have been working without them watching — your final message is their first look at any of it. Write it as a re-grounding: the outcome first, evidence for each rubric item, then the one or two things you need from them, each explained as if new. Leave behind the vocabulary you built up while working unless you re-introduce it.
 EOF
 exit 2

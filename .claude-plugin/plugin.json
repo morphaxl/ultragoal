@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "ultragoal",
   "displayName": "Ultragoal",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Tell Claude what you want once; it works until the job is verifiably done, then saves what it learned. Goals with checkable specs, independent verification, and a memory that grows.",
   "author": {
     "name": "morphaxl",

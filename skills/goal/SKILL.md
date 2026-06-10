@@ -26,7 +26,7 @@ Before asking the user anything:
 - Scan the repo with parallel Explore subagents for whatever the brief touches — existing implementations, tests, conventions, prior art.
 - Check `.ultragoal/goals/archive/` for related past goals (especially their Decision journals and failure notes).
 
-If a goal is already active in `.ultragoal/goals/active.md`, never silently overwrite — ask the user to pick one: (a) keep working on the current goal and drop this brief, (b) **queue** the new goal (write the finished spec to `.ultragoal/goals/queue/<slug>.md`; it gets armed when the active goal archives), or (c) pause or abandon the current goal (per the `ultragoal:stop` protocol) and arm this one. When a goal archives and the queue is non-empty, mention the next queued goal to the user.
+Goals are per-session: each lives in `.ultragoal/goals/active/<slug>/goal.md` with a `session:` field, and the gate enforces only the goal armed by the current session. So a goal active in *another* session does **not** block you — arm a new one freely; concurrent goals across sessions are the intended model. Only if **this same session** already has an active goal do you ask the user to pick: keep the current one (drop this brief), or replace it (pause/abandon per the `ultragoal:stop` protocol, then arm this).
 
 ## Phase 2 — Interview, gated by confidence
 
@@ -63,8 +63,8 @@ Show the user two things together, then ask for a yes / edits:
 
 On yes:
 
-1. Write it to `.ultragoal/goals/active.md` with `status: active`, `session: ${CLAUDE_SESSION_ID}` (the gate binds to this session, so other sessions in the repo stay free for side questions), and `verify:` copied from the `verification` knob in `.ultragoal/config.md` (default on; off means the gate accepts a fully checked rubric without the verifier pass).
-2. Reset the loop state: write `0` to `.ultragoal/goals/.turns` and delete `.ultragoal/goals/.rubric-hash` and `.ultragoal/goals/results.tsv` if they exist (they belong to the previous goal).
+1. Create `.ultragoal/goals/active/<slug>/` and write the spec to `goal.md` inside it (if that directory already exists for a different session, add a short suffix to the slug). Frontmatter: `status: active`, `session: ${CLAUDE_SESSION_ID}` (the gate enforces only this session's goal), and `verify:` copied from the `verification` knob in `.ultragoal/config.md` (default on; off means the gate accepts a fully checked rubric without the verifier pass).
+2. Write `0` to `.ultragoal/goals/active/<slug>/.turns`. (Experiment goals keep their `results.tsv` in this same directory, beside `goal.md`.)
 3. Tell the user the loop is armed: the Stop gate will keep the session working until the rubric is independently verified and lessons are distilled — and how to bail out (`/ultragoal:stop`, or the turn budget).
 
 Then **begin working immediately**. Do not end the turn with a plan.

@@ -5,23 +5,23 @@ description: Show the current ultragoal state — active goal, rubric progress, 
 
 Report the current ultragoal state for this project. Current data:
 
-Active goal file:
+Active goals (one directory per goal; each shows its bound session):
 ```!
-cat "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/active.md" 2>/dev/null || echo "(no active goal)"
+for g in "${CLAUDE_PROJECT_DIR:-.}"/.ultragoal/goals/active/*/goal.md "${CLAUDE_PROJECT_DIR:-.}"/.ultragoal/goals/active.md; do [ -r "$g" ] || continue; echo "── $g"; grep -E '^(slug|status|kind|session|budget):' "$g"; t="$(dirname "$g")/.turns"; echo "turns: $(cat "$t" 2>/dev/null || echo 0)"; done 2>/dev/null || echo "(no active goals)"
 ```
 
-Turns used: !`cat "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/.turns" 2>/dev/null || echo 0` · Sessions since last memory compaction: !`cat "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/memory/.sessions" 2>/dev/null || echo 0` · Archived goals: !`ls "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/archive/" 2>/dev/null | wc -l | tr -d ' '` · Queued: !`ls "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/queue/" 2>/dev/null | wc -l | tr -d ' '`
+Sessions since last memory compaction: !`cat "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/memory/.sessions" 2>/dev/null || echo 0` · Archived goals: !`ls "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/archive/" 2>/dev/null | wc -l | tr -d ' '`
 
 Goal history (stats.tsv, most recent last):
 ```!
 tail -10 "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/stats.tsv" 2>/dev/null || echo "(no completed goals yet)"
 ```
 
-Summarize for the user, leading with what matters:
+Summarize for the user, leading with what matters. Note which goal (if any) belongs to THIS session — that's the one the gate is driving here; others run in their own sessions.
 
-- If a goal is **active**: its objective in one line, rubric progress (checked/total, which items remain), turns used vs budget, last verifier verdict if any, and how to bail out (`/ultragoal:stop`).
+- For each **active** goal: its objective in one line, rubric progress (checked/total, which items remain), turns used vs budget, last verifier verdict if any. Mark the current session's goal distinctly. Bail out with `/ultragoal:stop`.
 - If a goal is **paused**: why (read its Decision journal tail), and that setting `status: active` resumes it.
-- If **no goal**: say so, and note `/ultragoal:goal <brief>` starts one.
+- If **no goals**: say so, and note `/ultragoal:goal <brief>` starts one.
 - Memory: one line — how many entries the index lists, and whether compaction is due (≥10 sessions).
 - History: if stats.tsv has 3+ rows, one trend line — are goals finishing within budget, and are verifier FAILs per goal trending down? (Rubric design is the skill; this is its scoreboard.)
 

@@ -4,13 +4,13 @@ description: Independent audit of a goal — the active one or a named archived 
 argument-hint: [optional - archived goal slug, or blank for the active/most recent goal]
 ---
 
-Run an independent audit. Target (may be empty — then audit `.ultragoal/goals/active.md`, or if none exists, the most recently archived goal):
+Run an independent audit. Target (may be empty — then audit this session's active goal, or if none exists, the most recently archived goal):
 
 <target>
 $ARGUMENTS
 </target>
 
-1. Resolve the goal file: active goal → `.ultragoal/goals/active.md`; a slug → `.ultragoal/goals/archive/<slug>.md`; empty + no active goal → newest file in `archive/`.
+1. Resolve the goal file: active goal → this session's `.ultragoal/goals/active/<slug>/goal.md` (or the legacy `active.md`); a slug → `.ultragoal/goals/active/<slug>/goal.md` or `.ultragoal/goals/archive/<slug>.md`; empty + no active goal → newest file in `archive/`.
 2. **Do not pre-investigate, summarize the work, or characterize the goal first** — anything you add becomes context that anchors the auditor. Dispatch the `ultragoal:verifier` subagent immediately, telling it only the goal file path and that this is a post-hoc audit: re-run every rubric check command, test every constraint, and append its verdict to the goal file per its protocol.
 3. Relay the verdict to the user **verbatim-faithfully**: verdict first, then the per-item findings exactly as the verifier reported them. Do not soften failures or add reassurance the verifier didn't give.
 4. If the audit FAILS on a goal that was marked done: say plainly which claims didn't hold, and offer two paths — reopen the goal (move it back to `active.md`, set `status: active` and `session:` to this session, uncheck the failed items) or record the gap as a known issue in `.ultragoal/memory/failures.md`.

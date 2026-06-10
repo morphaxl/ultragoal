@@ -260,7 +260,7 @@ const FIXED_CORE = `<!-- ultragoal:start — managed block; edit knobs via /ultr
 - When you learn something durable — a confirmed approach, a dead end, an expensive derivation you'd hate to redo — record it per the memory protocol (the \`ultragoal:remember\` skill). Don't save what the repo or git history already records; update entries rather than duplicating.
 - When the user corrects you, write it to memory immediately (\`[USER-CORRECTION]\`) — it's the highest-confidence signal there is, and it dies with the session if deferred.
 - Memory files are two layers: compiled truth above the \`---\` (rewrite freely), dated evidence log below it (append-only — never edit or delete evidence lines).
-- Active goals live in \`.ultragoal/goals/active.md\`. Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item.
+- Active goals live in \`.ultragoal/goals/active/<slug>/goal.md\` (one per session). Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item.
 - Before reporting progress, audit each claim against a tool result from this session. If tests fail, say so with the output; if a step was skipped, say that.`;
 
 const MEMORY_FILES = {
@@ -361,7 +361,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 
   // .gitignore entries
   const gi = join(root, '.gitignore');
-  const wanted = ['.ultragoal/goals/.turns', '.ultragoal/memory/.sessions'];
+  const wanted = ['.ultragoal/goals/active/*/.turns', '.ultragoal/goals/active/*/.rubric-hash', '.ultragoal/memory/.sessions'];
   if (picks.memory === 'local') wanted.push('.ultragoal/memory/');
   const existing = existsSync(gi) ? readFileSync(gi, 'utf8') : '';
   const missing = wanted.filter((l) => !existing.includes(l));

@@ -19,7 +19,7 @@ Four parts keep each other honest:
 
 - **A real definition of done.** Every goal becomes a spec whose rubric is checkable by commands — "tests pass", "p95 under 200ms" — never vibes. In the research's words: *rubric design is the skill now; a well-designed rubric does more work than the model.*
 - **Fresh eyes, not self-review.** A separate verifier agent — with no knowledge of how the work was done — re-runs every check and tries to prove the work *wrong*. Anthropic's guidance is blunt: fresh-context verifiers outperform self-critique. Only their sign-off counts.
-- **A loop that can't quit early.** A gate blocks Claude from stopping while the goal is unfinished — and because the goal lives in a file, it survives `/clear`, restarts, and days away. Same architecture as Claude Code's built-in `/goal`, with upgrades (see [how the loop works](#how-the-loop-actually-works)).
+- **A loop that can't quit early.** A gate blocks Claude from stopping while the goal is unfinished — and because the goal lives in a file, it survives `/clear`, restarts, and days away. Goals are per-session: run different goals in different sessions of the same repo at once, each gated independently. Same architecture as Claude Code's built-in `/goal`, with upgrades (see [how the loop works](#how-the-loop-actually-works)).
 - **Memory that compounds.** Every goal ends by saving verified facts, working patterns, and dead ends into your repo. The continual-learning progression — fail → investigate → verify → distill → consult — runs on autopilot, for your whole team.
 
 And the pitch in one line: **you never have to learn prompt engineering.** You bring intent; ultragoal writes the expert-grade brief for itself, straight from Anthropic's playbook.
@@ -104,9 +104,10 @@ Everything the plugin produces is plain markdown you own — editable, diffable,
 ├── stats.tsv            # one row per finished goal: turns, verifier fails, outcome —
 │                        #   "rubric design is the skill"; this is its scoreboard
 ├── goals/
-│   ├── active.md        # the live goal spec: rubric, verification log, decision journal
-│   ├── queue/           # specs waiting their turn (armed when the active goal archives)
-│   ├── results.tsv      # experiment goals: every attempt with its commit hash
+│   ├── active/
+│   │   └── <slug>/      # one directory per live goal (concurrent across sessions)
+│   │       ├── goal.md  #   the spec: rubric, verification log, decision journal
+│   │       └── results.tsv  # experiment goals: every attempt with its commit hash
 │   └── archive/         # finished and abandoned goals (their journals feed memory)
 └── memory/
     ├── MEMORY.md        # index + fixed slots (commands, invariants, gotchas, hot files)
@@ -140,7 +141,7 @@ Change them anytime with `/ultragoal:setup` or by editing the markdown.
 `/goal` in Claude Code is a Stop hook under the hood: something checks a condition after every turn and blocks the stop until it holds. Ultragoal ships that same architecture with four differences:
 
 - **The model can arm it.** Claude can't invoke built-in `/goal` itself; it *can* write a goal file, which is all the ultragoal gate needs. One skill takes you from ramble to running loop.
-- **It persists.** Native `/goal` dies with the session. The ultragoal gate reads a file, so a goal spans sessions and days.
+- **It persists, and it's per-session.** Native `/goal` dies with the session and there's one at a time. The ultragoal gate reads files keyed by session, so a goal spans sessions and days — and different sessions in the same repo can each run their own goal concurrently, with the gate enforcing only the one you armed in the session that's stopping.
 - **The judge runs commands.** Native `/goal`'s evaluator only reads the transcript — the self-report channel. Ultragoal's gate is deterministic (free, instant), and completion requires a fresh-context verifier that re-ran the checks itself.
 - **Finishing requires learning.** The gate won't release until lessons are distilled to memory. Failed goals distill too — `failures.md` exists so the next attempt doesn't repeat them.
 

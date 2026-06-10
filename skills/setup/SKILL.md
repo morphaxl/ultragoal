@@ -34,7 +34,7 @@ Create (don't overwrite anything that exists):
     └── failures.md      ←   "
 ```
 
-If memory sharing = local-only, add `.ultragoal/memory/` to `.gitignore`. Either way add `.ultragoal/goals/.turns` and `.ultragoal/memory/.sessions` to `.gitignore` (machine-local counters).
+If memory sharing = local-only, add `.ultragoal/memory/` to `.gitignore`. Either way add `.ultragoal/goals/active/*/.turns`, `.ultragoal/goals/active/*/.rubric-hash`, and `.ultragoal/memory/.sessions` to `.gitignore` (machine-local, per-session counters that shouldn't be shared).
 
 ## 3. CLAUDE.md block
 

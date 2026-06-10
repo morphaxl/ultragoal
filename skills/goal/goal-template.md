@@ -1,6 +1,6 @@
 # Goal spec template
 
-Write `.ultragoal/goals/active.md` exactly in this shape. Frontmatter fields are read by the gate script — keep the key names.
+Write the spec to `.ultragoal/goals/active/<slug>/goal.md` exactly in this shape. Frontmatter fields are read by the gate script — keep the key names.
 
 ```markdown
 ---
@@ -8,7 +8,7 @@ slug: <kebab-case-short-name>
 status: active
 kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
 budget: <max turns — default from .ultragoal/config.md, usually 25>
-session: <the arming session's ID — the gate only enforces in this session; a new session takes over by rewriting this field>
+session: <the arming session's ID — the gate enforces only this session's goal; another session can take it over by rewriting this field>
 verify: on | off               # from config's verification knob; off = checked rubric suffices, no verifier pass
 created: <YYYY-MM-DD>
 ---
@@ -45,7 +45,9 @@ relevant files, links. List every assumption you made on the user's behalf.>
 <!-- one line per structural decision or abandoned approach, as you work -->
 
 # Native fallback
-/goal <one-line condition restating the rubric, e.g. "all rubric items in .ultragoal/goals/active.md are checked with evidence and the verification log shows ULTRAGOAL-VERIFIED: PASS, or stop after N turns">
+/goal <one-line condition restating the rubric, e.g. "all rubric items in this goal file are checked with evidence and the verification log shows ULTRAGOAL-VERIFIED: PASS, or stop after N turns">
 ```
+
+Experiment goals keep their `results.tsv` in the same `active/<slug>/` directory, beside `goal.md`.
 
 The Native fallback line lets anyone run this same goal with Claude Code's built-in `/goal` instead of the ultragoal gate (useful for one-off headless runs: `claude -p "/goal ..."`).

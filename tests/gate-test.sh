@@ -20,21 +20,24 @@ check() { # name expected_exit actual_exit [grep_pattern] [grep_file]
   fi
 }
 
-fresh() { # new sandbox; sets T, UG, GOAL
+fresh() { # new sandbox; sets T, UG; default goal slug "t"
   T="$(mktemp -d)"; export CLAUDE_PROJECT_DIR="$T"
-  UG="$T/.ultragoal"; GOAL="$UG/goals/active.md"
-  mkdir -p "$UG/goals" "$UG/memory"
+  UG="$T/.ultragoal"
+  mkdir -p "$UG/goals/active" "$UG/memory"
+  GOAL="$UG/goals/active/t/goal.md"
 }
 
-goalfile() { # status kind budget session verify
-  cat > "$GOAL" <<EOF
+write_goal() { # path status kind budget session verify slug
+  local path="$1" slug="${7:-t}"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<EOF
 ---
-slug: t
-status: ${1:-active}
-kind: ${2:-task}
-budget: ${3:-25}
-session: ${4:-}
-verify: ${5:-on}
+slug: $slug
+status: ${2:-active}
+kind: ${3:-task}
+budget: ${4:-25}
+session: ${5:-}
+verify: ${6:-on}
 created: 2026-06-10
 ---
 # Rubric
@@ -43,6 +46,16 @@ created: 2026-06-10
 # Stop conditions
 - none
 EOF
+}
+
+goalfile() { # status kind budget session verify  (per-session goal, slug "t")
+  GOAL="$UG/goals/active/t/goal.md"
+  write_goal "$GOAL" "${1:-active}" "${2:-task}" "${3:-25}" "${4:-}" "${5:-on}" t
+}
+
+legacy_goalfile() { # status session  (old single-file model)
+  GOAL="$UG/goals/active.md"
+  write_goal "$GOAL" "${1:-active}" task 25 "${2:-}" on t
 }
 
 run_gate() { # [session_id] -> sets RC, ERR
@@ -58,15 +71,26 @@ echo "goal-gate.sh"
 
 fresh; run_gate; check "no .ultragoal -> open" 0 "$RC"
 
-fresh; printf 'garbage\nnot frontmatter\n' > "$GOAL"; run_gate
+fresh; mkdir -p "$(dirname "$GOAL")"; printf 'garbage\nnot frontmatter\n' > "$GOAL"; run_gate
 check "garbage goal file -> fail open" 0 "$RC"
 
-fresh; goalfile active task 25 ""; run_gate
-check "active+unchecked (legacy, no session) -> block" 2 "$RC" "still active" "$ERR"
+fresh; legacy_goalfile active ""; run_gate
+check "legacy active.md (no session) -> block" 2 "$RC" "still active" "$ERR"
 
 fresh; goalfile active task 25 "s1"; run_gate "s1"
 check "bound session -> block" 2 "$RC" "Remaining rubric" "$ERR"
 run_gate "s2"; check "OTHER session -> open (no hijack)" 0 "$RC"
+
+# concurrency: two goals, two sessions, same repo
+fresh
+write_goal "$UG/goals/active/alpha/goal.md" active task 25 "sA" on alpha
+write_goal "$UG/goals/active/beta/goal.md"  active task 25 "sB" on beta
+run_gate "sA"; check "session A enforces goal alpha" 2 "$RC" "alpha" "$ERR"
+run_gate "sB"; check "session B enforces goal beta" 2 "$RC" "beta" "$ERR"
+run_gate "sC"; check "session C (no goal) -> open" 0 "$RC"
+# each goal's turn counter is independent
+ta="$(cat "$UG/goals/active/alpha/.turns" 2>/dev/null)"; tb="$(cat "$UG/goals/active/beta/.turns" 2>/dev/null)"
+[ "$ta" = "1" ] && [ "$tb" = "1" ] && check "per-goal turn counters independent" 0 0 || check "per-goal turn counters independent" 0 1
 
 fresh; goalfile paused; run_gate; check "paused -> open" 0 "$RC"
 
@@ -112,12 +136,13 @@ export CLAUDE_PROJECT_DIR="$T"
 echo "session-context.sh"
 
 fresh
-goalfile active task 25 "other-session"
+write_goal "$UG/goals/active/mine/goal.md"   active task 25 "me"     on mine
+write_goal "$UG/goals/active/theirs/goal.md" active task 25 "other"  on theirs
 printf '# Memory index\n- [facts.md] x\n' > "$UG/memory/MEMORY.md"
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"; RC=$?
 check "ctx exits 0" 0 "$RC"
-echo "$OUT" | grep -q "armed by another session" && check "ctx: other-session banner" 0 0 || check "ctx: other-session banner" 0 1
-echo "$OUT" | grep -q 'session: me' && check "ctx: rebind hint has my id" 0 0 || check "ctx: rebind hint has my id" 0 1
+echo "$OUT" | grep -q "ACTIVE GOAL (this session): \"mine\"" && check "ctx: shows this session's goal" 0 0 || check "ctx: shows this session's goal" 0 1
+echo "$OUT" | grep -q "other goal(s) are active in OTHER sessions" && check "ctx: notes other sessions' goals" 0 0 || check "ctx: notes other sessions' goals" 0 1
 
 printf '# x\n---\n## Evidence log\n[2026-01-01 S1] old\n' > "$UG/memory/facts.md"
 ( cd "$T" && git init -q && git -c user.name=t -c user.email=t@t commit -q --allow-empty -m a && for i in $(seq 1 25); do git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "c$i"; done )

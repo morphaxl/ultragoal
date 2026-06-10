@@ -12,7 +12,7 @@ The block is the fixed core + one snippet per chosen knob. All knob snippets are
 - When you learn something durable — a confirmed approach, a dead end, an expensive derivation you'd hate to redo — record it per the memory protocol (the `ultragoal:remember` skill). Don't save what the repo or git history already records; update entries rather than duplicating.
 - When the user corrects you, write it to memory immediately (`[USER-CORRECTION]`) — it's the highest-confidence signal there is, and it dies with the session if deferred.
 - Memory files are two layers: compiled truth above the `---` (rewrite freely), dated evidence log below it (append-only — never edit or delete evidence lines).
-- Active goals live in `.ultragoal/goals/active.md`. Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item — that sign-off belongs to the fresh-context verifier subagent.
+- Active goals live in `.ultragoal/goals/active/<slug>/goal.md` (one per session). Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item — that sign-off belongs to the fresh-context verifier subagent.
 - Before reporting progress, audit each claim against a tool result from this session. If tests fail, say so with the output; if a step was skipped, say that.
 ```
 
