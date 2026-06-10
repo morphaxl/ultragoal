@@ -1,14 +1,26 @@
 #!/usr/bin/env bash
 # ultragoal session context — runs as a SessionStart hook.
 # Injects (as context Claude can see): an active/paused goal banner, the head
-# of the memory index, and a compaction nudge when due. Prints nothing for
-# projects that don't use ultragoal.
+# of the memory index, a staleness warning, and a compaction nudge when due.
+# Prints nothing for projects that don't use ultragoal.
 #
 # Invariant: FAIL OPEN — always exit 0.
 
-ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+# ---- locate the .ultragoal root (walk up for monorepos/workspaces) ---------
+start="${CLAUDE_PROJECT_DIR:-$PWD}"
+ROOT="$start"
+d="$start"
+while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "$HOME" ]; do
+  if [ -d "$d/.ultragoal" ]; then ROOT="$d"; break; fi
+  d="$(dirname "$d")"
+done
 UG="$ROOT/.ultragoal"
 [ -d "$UG" ] || exit 0
+
+# this session's id, from the hook payload
+payload=""
+if [ ! -t 0 ]; then payload="$(cat 2>/dev/null)"; fi
+sid="$(printf '%s' "$payload" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
 
 # session counter (drives the ~10-session compaction cadence)
 mkdir -p "$UG/memory" 2>/dev/null
@@ -26,21 +38,29 @@ if [ -r "$GOAL" ]; then
   status="$(sed -n 's/^status:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
   slug="$(sed -n 's/^slug:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1)"
   budget="$(sed -n 's/^budget:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
+  goal_sid="$(sed -n 's/^session:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
   turns=0
   [ -r "$UG/goals/.turns" ] && turns="$(tr -dc '0-9' < "$UG/goals/.turns" 2>/dev/null)"
   case "$status" in
     active)
-      echo "ACTIVE GOAL: \"$slug\" — turn ${turns:-0} of ${budget:-25}. The goal loop is armed: resume working toward the rubric in .ultragoal/goals/active.md. /ultragoal:status for details, /ultragoal:stop to abandon."
+      if [ -n "$goal_sid" ] && [ -n "$sid" ] && [ "$goal_sid" != "$sid" ]; then
+        echo "ACTIVE GOAL (armed by another session): \"$slug\" — turn ${turns:-0} of ${budget:-25}, in $UG/goals/active.md. The gate is NOT enforcing it in this session, so side questions are safe. If the user wants THIS session to take the goal over, set \"session: ${sid}\" in the goal file and resume; /ultragoal:status for details."
+      else
+        echo "ACTIVE GOAL: \"$slug\" — turn ${turns:-0} of ${budget:-25}. The goal loop is armed: resume working toward the rubric in $UG/goals/active.md. /ultragoal:status for details, /ultragoal:stop to abandon."
+        if [ -z "$goal_sid" ] && [ -n "$sid" ]; then
+          echo "(This goal predates session binding — set \"session: ${sid}\" in its frontmatter so the gate binds to this session only.)"
+        fi
+      fi
       ;;
     paused)
-      echo "PAUSED GOAL: \"$slug\" exists in .ultragoal/goals/active.md. If the user wants to resume it, set \"status: active\" and continue; otherwise leave it."
+      echo "PAUSED GOAL: \"$slug\" exists in $UG/goals/active.md. If the user wants to resume it, set \"status: active\" (and \"session: ${sid:-the current session id}\") and continue; otherwise leave it."
       ;;
   esac
 fi
 
 MEM="$UG/memory/MEMORY.md"
 if [ -r "$MEM" ]; then
-  echo "Project memory index (.ultragoal/memory/MEMORY.md) — consult relevant topic files before substantial work. Trust [VERIFIED] claims; treat [READ] as source-dependent and [INFERRED] as hypotheses to re-check:"
+  echo "Project memory index ($UG/memory/MEMORY.md) — consult relevant topic files before substantial work. Trust [VERIFIED] claims; treat [READ] as source-dependent and [INFERRED] as hypotheses to re-check:"
   head -c 8192 "$MEM" 2>/dev/null | head -100
 
   # Staleness gap analysis: how much has the repo moved since memory was last fed?

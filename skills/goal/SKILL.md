@@ -26,13 +26,18 @@ Before asking the user anything:
 - Scan the repo with parallel Explore subagents for whatever the brief touches — existing implementations, tests, conventions, prior art.
 - Check `.ultragoal/goals/archive/` for related past goals (especially their Decision journals and failure notes).
 
-If a goal is already active in `.ultragoal/goals/active.md`, stop and ask the user whether to replace it (archive as abandoned) or keep it — never silently overwrite.
+If a goal is already active in `.ultragoal/goals/active.md`, never silently overwrite — ask the user to pick one: (a) keep working on the current goal and drop this brief, (b) **queue** the new goal (write the finished spec to `.ultragoal/goals/queue/<slug>.md`; it gets armed when the active goal archives), or (c) pause or abandon the current goal (per the `ultragoal:stop` protocol) and arm this one. When a goal archives and the queue is non-empty, mention the next queued goal to the user.
 
 ## Phase 2 — Interview, gated by confidence
 
 Identify what the spec needs that you cannot infer with high confidence from the brief, the repo, and memory. Typical gaps: the measurable end state, scope boundaries (what is explicitly out), who/what the result is for, constraints that must not break, and the rough effort budget.
 
-Ask only those — batched in one AskUserQuestion call where possible, at most ~5 questions, each with concrete options and your recommended default first. Do not ask things the codebase can answer; go look instead.
+Check `interview-depth` in `.ultragoal/config.md` (the user can also override per-goal by saying "quick" or "deep/thorough interview" in the brief):
+
+- **quick** (default): ask only the genuine gaps — batched in one AskUserQuestion call where possible, at most ~5 questions, each with concrete options and your recommended default first.
+- **deep**: run multiple rounds, one AskUserQuestion batch per theme — intent and audience → shape of done → scope edges (what's explicitly out) → risks and constraints → how to verify. Skip any round the brief already answers; stop when a round adds nothing new.
+
+Either way: do not ask things the codebase can answer; go look instead.
 
 If running non-interactively (no user available), skip questions: make the most reasonable assumption for each gap and record every assumption explicitly in the spec's Context section.
 
@@ -51,7 +56,7 @@ Before showing the user, adversarially review your own rubric against the anti-p
 
 Show the user the draft spec (objective, rubric, stop conditions, constraints, budget) and ask for a yes / edits. On yes:
 
-1. Write it to `.ultragoal/goals/active.md` with `status: active`.
+1. Write it to `.ultragoal/goals/active.md` with `status: active` and `session: ${CLAUDE_SESSION_ID}` in the frontmatter — the gate binds to this session, so other sessions in the repo stay free for side questions (they're told how to take the goal over).
 2. Reset the loop state: write `0` to `.ultragoal/goals/.turns` and delete `.ultragoal/goals/.rubric-hash` and `.ultragoal/goals/results.tsv` if they exist (they belong to the previous goal).
 3. Tell the user the loop is armed: the Stop gate will keep the session working until the rubric is independently verified and lessons are distilled — and how to bail out (`/ultragoal:stop`, or the turn budget).
 

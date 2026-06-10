@@ -9,14 +9,34 @@
 # Invariant: FAIL OPEN. This script must never be able to trap a session.
 # Any unexpected state exits 0.
 
-ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+# ---- locate the .ultragoal root (walk up for monorepos/workspaces) ---------
+start="${CLAUDE_PROJECT_DIR:-$PWD}"
+ROOT="$start"
+d="$start"
+while [ -n "$d" ] && [ "$d" != "/" ] && [ "$d" != "$HOME" ]; do
+  if [ -d "$d/.ultragoal" ]; then ROOT="$d"; break; fi
+  d="$(dirname "$d")"
+done
 UG="$ROOT/.ultragoal"
 GOAL="$UG/goals/active.md"
 
 [ -r "$GOAL" ] || exit 0
 
+# ---- hook payload: which session is stopping? -------------------------------
+payload=""
+if [ ! -t 0 ]; then payload="$(cat 2>/dev/null)"; fi
+sid="$(printf '%s' "$payload" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+
 status="$(sed -n 's/^status:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
 [ "$status" = "active" ] || exit 0
+
+# The gate binds to the session that armed the goal. Other sessions in the
+# same repo (side questions, teammates) are left alone; the SessionStart
+# banner tells them how to take the goal over (rebind the session: field).
+goal_sid="$(sed -n 's/^session:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
+if [ -n "$goal_sid" ] && [ -n "$sid" ] && [ "$goal_sid" != "$sid" ]; then
+  exit 0
+fi
 
 budget="$(sed -n 's/^budget:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
 case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
@@ -27,8 +47,10 @@ slug="$(sed -n 's/^slug:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1)"
 kind="$(sed -n 's/^kind:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
 [ -n "$kind" ] || kind="task"
 
-# Rubric integrity: the checks are frozen at arm time. A changed rubric is
-# allowed (specs are user-editable) but must be surfaced, never silent.
+# ---- rubric integrity -------------------------------------------------------
+# The checks are frozen at arm time. A changed rubric is allowed (specs are
+# user-editable) but is surfaced, and it invalidates prior verifier verdicts
+# structurally: verdicts carry the rubric hash they were issued against.
 hash_file="$UG/goals/.rubric-hash"
 rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
 integrity_note=""
@@ -36,7 +58,7 @@ if [ -n "$rubric_hash" ]; then
   if [ -r "$hash_file" ]; then
     prev_hash="$(tr -dc '0-9' < "$hash_file" 2>/dev/null)"
     if [ -n "$prev_hash" ] && [ "$prev_hash" != "$rubric_hash" ]; then
-      integrity_note="NOTE: the Rubric section changed since it was armed. If this was a deliberate amendment, record it with a reason in the Decision journal; the verifier must re-check ALL items against the new rubric. Weakening a check to pass it is never acceptable."
+      integrity_note="NOTE: the Rubric section changed since it was armed. Prior verifier verdicts no longer count (they are bound to the old rubric hash). If this was a deliberate amendment, record the reason in the Decision journal; the verifier must re-check ALL items. Weakening a check to pass it is never acceptable."
       printf '%s' "$rubric_hash" > "$hash_file" 2>/dev/null || true
     fi
   else
@@ -44,7 +66,7 @@ if [ -n "$rubric_hash" ]; then
   fi
 fi
 
-# ---- turn accounting -------------------------------------------------------
+# ---- turn accounting --------------------------------------------------------
 turns_file="$UG/goals/.turns"
 turns=0
 if [ -r "$turns_file" ]; then
@@ -54,29 +76,43 @@ case "$turns" in '') turns=0 ;; esac
 turns=$((turns + 1))
 printf '%s' "$turns" > "$turns_file" 2>/dev/null || true
 
-# Budget exhausted: nudge exactly once, then fail open. (If Claude raises the
-# budget in the goal file, normal gating resumes automatically.)
+# Budget exhausted: nudge exactly once, then pause the goal and release.
+# Flipping status here keeps state and behavior from diverging — no zombie
+# "active" goal that the gate no longer enforces.
 if [ "$turns" -gt $((budget + 1)) ]; then
+  tmp="$GOAL.tmp.$$"
+  if sed 's/^status:[[:space:]]*active/status: paused/' "$GOAL" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$GOAL" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+  else
+    rm -f "$tmp" 2>/dev/null
+  fi
   exit 0
 fi
 if [ "$turns" -gt "$budget" ]; then
   cat >&2 <<EOF
 ULTRAGOAL GATE — turn budget reached ($((turns - 1))/$budget) for "$slug".
 Do exactly one of the following, then stop:
-1. Report honestly where things stand against each rubric item (audit every claim against a tool result from this session), set "status: paused" in .ultragoal/goals/active.md, and tell the user what remains.
+1. Report honestly where things stand against each rubric item (audit every claim against a tool result from this session), set "status: paused" in the goal file, and tell the user what remains.
 2. If you are genuinely close and continuing is clearly justified, raise "budget:" in the goal file and keep working.
+If you do neither, the gate will pause the goal itself next turn.
 EOF
   exit 2
 fi
 
-# ---- rubric state ----------------------------------------------------------
+# ---- rubric + verification state -------------------------------------------
 rubric="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null)"
 unchecked="$(printf '%s\n' "$rubric" | grep '^[[:space:]]*- \[ \]' 2>/dev/null)"
 unchecked_count="$(printf '%s' "$unchecked" | grep -c '\[ \]' 2>/dev/null)"
 case "$unchecked_count" in '' | *[!0-9]*) unchecked_count=0 ;; esac
 
+# Only the LAST verdict counts, and it must be bound to the CURRENT rubric.
+# A PASS from round 1 followed by a FAIL, or a PASS issued against an older
+# rubric, does not release the gate.
 verified=0
-grep -q 'ULTRAGOAL-VERIFIED: PASS' "$GOAL" 2>/dev/null && verified=1
+last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
+case "$last_verdict" in
+  *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) [ -n "$rubric_hash" ] && verified=1 ;;
+esac
 
 if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
   {
@@ -86,7 +122,7 @@ if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
       echo "Remaining rubric items:"
       printf '%s\n' "$unchecked"
     else
-      echo "All rubric boxes are checked, but no independent verification is recorded."
+      echo "All rubric boxes are checked, but there is no valid verification: the last verdict must be exactly \"ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash\" (issued by the verifier against the current rubric)."
     fi
     if [ "$kind" = "experiment" ]; then
       cat <<'EOF'
@@ -102,7 +138,7 @@ EOF
       cat <<'EOF'
 Protocol:
 - Never check a rubric box without evidence from a command you ran this session.
-- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the Verification log. Only a logged "ULTRAGOAL-VERIFIED: PASS" completes the goal.
+- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the goal file. Only a valid PASS verdict bound to the current rubric completes the goal.
 - Log structural decisions and dead ends in the Decision journal as you go.
 - A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.
 EOF
@@ -112,11 +148,12 @@ EOF
   exit 2
 fi
 
-# ---- rubric verified: enforce distillation, then release -------------------
+# ---- rubric verified: enforce distillation, then release --------------------
 cat >&2 <<'EOF'
-ULTRAGOAL GATE — rubric complete and independently verified. Final step before you finish:
-1. Distill lessons into .ultragoal/memory/ (use the ultragoal:remember skill): verified facts, patterns that worked, dead ends to avoid. Tag with [VERIFIED S<n>] and evidence.
-2. Move .ultragoal/goals/active.md to .ultragoal/goals/archive/<slug>.md and set "status: done" in it.
-3. Then report the outcome to the user: lead with what was accomplished, evidence for each rubric item, and anything the user should do next.
+ULTRAGOAL GATE — rubric complete and independently verified. Final steps before you finish:
+1. Distill lessons into .ultragoal/memory/ (use the ultragoal:remember skill): verified facts, patterns that worked, dead ends to avoid — with provenance tags and evidence.
+2. Append a row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing): today's date, the slug, the kind, "done", turns used (.ultragoal/goals/.turns), the count of FAIL verdicts in the goal file, and the final budget.
+3. Move .ultragoal/goals/active.md to .ultragoal/goals/archive/<slug>.md and set "status: done" in it.
+4. Then report the outcome to the user: lead with what was accomplished, evidence for each rubric item, and anything the user should do next.
 EOF
 exit 2

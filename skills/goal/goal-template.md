@@ -8,6 +8,7 @@ slug: <kebab-case-short-name>
 status: active
 kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
 budget: <max turns — default from .ultragoal/config.md, usually 25>
+session: <the arming session's ID — the gate only enforces in this session; a new session takes over by rewriting this field>
 created: <YYYY-MM-DD>
 ---
 

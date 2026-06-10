@@ -14,7 +14,9 @@ Ask the user the four questions below in **one** AskUserQuestion call (recommend
 3. **Scope discipline** — minimal (default) / elaborate-ok
 4. **Memory sharing** — git-committed, team-shared (default) / local-only (gitignored)
 
-Two more settings with sensible defaults — mention they exist in `config.md` rather than asking: default turn budget (25) and verification cadence (before claiming any rubric item).
+Three more settings with sensible defaults — mention they exist in `config.md` rather than asking: default turn budget (25), verification cadence (before claiming any rubric item), and interview depth (quick; "deep" runs a multi-round interview for big features).
+
+**Workspace placement:** if this directory sits inside a larger workspace that holds several repos, offer to put `.ultragoal/` at the workspace root instead — the hooks walk up from the current repo to the nearest `.ultragoal/`, so one shared brain can serve all the nested repos.
 
 ## 2. Scaffold
 

@@ -271,6 +271,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | memory-sharing | ${picks.memory} |
 | default-budget | 25 |
 | verification-cadence | every-claim |
+| interview-depth | quick |
 `
   );
 

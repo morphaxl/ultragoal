@@ -60,7 +60,7 @@ We keep full compatibility: every goal spec includes a one-line native `/goal` c
 `scripts/goal-gate.sh`, shipped in the plugin, registered on `Stop`:
 
 1. **No active goal** (`.ultragoal/goals/active.md` absent or `status != active`) → `exit 0`. Cost: one stat call. This is the every-day case; the plugin is invisible when idle.
-2. **Active goal** → increment the turn counter (sidecar `.ultragoal/goals/.state.json`); then:
+2. **Active goal** → increment the turn counter (sidecar `.ultragoal/goals/.turns`); then:
    - **Stop condition hit** (turn budget reached, or a stop-condition marker the model wrote) → allow stop, print a "budget reached — report honestly where things stand" reminder.
    - **Rubric has unchecked items, or no verifier PASS recorded** → `exit 2`; stderr = the unchecked rubric items + the loop protocol reminder (verify with the verifier subagent, record evidence, never self-certify).
    - **Rubric complete + verifier PASS, but lessons not yet distilled** → `exit 2` once more: "Rubric verified. Distill lessons into `.ultragoal/memory/` per the protocol, archive the goal, then finish." → **distillation is mechanically enforced by the loop itself.**
@@ -179,7 +179,7 @@ What it creates in the **user's repo** (all theirs, all git-friendly):
 ```
 .ultragoal/
 ├── config.md                       # the knobs (§5) — plain markdown, hand-editable
-├── goals/  active.md · archive/ · .state.json
+├── goals/  active.md · archive/ · queue/ · .turns · .rubric-hash · results.tsv
 └── memory/ MEMORY.md (index) · facts.md · patterns.md · failures.md
 CLAUDE.md                           # gains a small fenced block: <!-- ultragoal:start --> … <!-- ultragoal:end -->
 ```

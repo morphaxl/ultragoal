@@ -43,7 +43,7 @@ For a team, install to project scope so the config lands in `.claude/settings.js
 npx ultragoal --project
 ```
 
-Requires Claude Code ≥ 2.1.139. Uninstall anytime with `npx ultragoal uninstall`.
+Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Uninstall anytime with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
 ## Sixty seconds to your first goal
 
@@ -131,7 +131,7 @@ Every goal spec also includes a one-line **native `/goal` fallback**, handy for 
 
 ### Escape hatches
 
-Loops need brakes. Every rubric must carry stop conditions; every goal has a turn budget (default 25) — at the limit the gate demands an honest status report and releases; `/ultragoal:stop` releases it instantly; and the gate **fails open** on any script error. It cannot trap a session.
+Loops need brakes. Every rubric must carry stop conditions; every goal has a turn budget (default 25) — at the limit the gate demands an honest status report, and if that's ignored it pauses the goal itself; `/ultragoal:stop` releases it instantly; and the gate **fails open** on any script error. It cannot trap a session. The gate also binds to the session that armed the goal — open a second Claude session in the same repo for a quick side question and it stays free (the banner tells it how to take the goal over if you want that). Verifier verdicts are cryptographically dull but effective: each one is bound to a hash of the rubric it was issued against, so a stale PASS — or a quietly weakened rubric — never releases the gate. The engine has a regression suite (`tests/gate-test.sh`) run in CI on every push.
 
 ### Footprint
 
