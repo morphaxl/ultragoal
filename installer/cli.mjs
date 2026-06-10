@@ -49,8 +49,9 @@ if (flag('--help') || flag('-h')) {
   banner();
   console.log(`  ${pc.bold('Usage')}
     npx ultragoal              interactive install (scope, optional repo setup)
-    npx ultragoal --yes        non-interactive: user-scope install, no prompts
-    npx ultragoal --project    install at project scope (team-shared via git)
+    npx ultragoal --yes        non-interactive: project-scope install, no prompts
+    npx ultragoal --project    install at project scope (the default; team-shared via git)
+    npx ultragoal --global     install machine-wide (user scope) instead
     npx ultragoal --setup      also pre-configure the current repo (with --yes: defaults)
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
     npx ultragoal uninstall --purge
@@ -157,8 +158,8 @@ const KNOBS = {
   scope: {
     question: 'How tightly should Claude scope its changes?',
     options: [
-      { value: 'minimal', label: 'Minimal', hint: 'recommended — only what the task requires' },
-      { value: 'elaborate-ok', label: 'Polish welcome', hint: 'reasonable extras, named in the summary' },
+      { value: 'elaborate-ok', label: 'Polish welcome', hint: 'recommended — reasonable extras, named in the summary' },
+      { value: 'minimal', label: 'Minimal', hint: 'only what the task requires' },
     ],
     blocks: {
       minimal:
@@ -172,6 +173,13 @@ const KNOBS = {
     options: [
       { value: 'git', label: 'Git-committed', hint: 'recommended — the team’s compounding brain' },
       { value: 'local', label: 'Local only', hint: 'gitignored, just for you' },
+    ],
+  },
+  verification: {
+    question: 'Require independent verification before a goal can finish?',
+    options: [
+      { value: 'on', label: 'On', hint: 'recommended — a fresh-context verifier re-runs every check' },
+      { value: 'off', label: 'Off', hint: 'faster: checked rubric + saved lessons suffice, no verifier pass' },
     ],
   },
 };
@@ -269,6 +277,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | communication | ${picks.communication} |
 | scope | ${picks.scope} |
 | memory-sharing | ${picks.memory} |
+| verification | ${picks.verification} |
 | default-budget | 25 |
 | verification-cadence | every-claim |
 | interview-depth | quick |
@@ -324,14 +333,14 @@ if (probe.missing) {
 }
 s.stop(`Claude Code ${pc.dim((probe.stdout || '').trim().split(' ')[0] || 'found')}`);
 
-// 2. Scope
-let scope = flag('--project') ? 'project' : 'user';
-if (interactive && !flag('--project')) {
+// 2. Scope — project by default; --global opts into machine-wide install
+let scope = flag('--global') ? 'user' : 'project';
+if (interactive && !flag('--project') && !flag('--global')) {
   const pick = await p.select({
     message: 'Where should it be installed?',
     options: [
-      { value: 'user', label: 'Globally', hint: 'every project on this machine — recommended' },
-      { value: 'project', label: 'Only this project', hint: 'written to .claude/settings.json, so teammates get it via git' },
+      { value: 'project', label: 'Only this project', hint: 'recommended — written to .claude/settings.json, teammates get it via git' },
+      { value: 'user', label: 'Globally', hint: 'every project on this machine' },
     ],
   });
   if (p.isCancel(pick)) bail('Cancelled.');
@@ -368,9 +377,9 @@ if (interactive && !alreadySetup && !wantSetup) {
 }
 
 if (wantSetup && !alreadySetup) {
-  const picks = { action: 'proactive', communication: 'lead-with-outcome', scope: 'minimal', memory: 'git' };
+  const picks = { action: 'proactive', communication: 'lead-with-outcome', scope: 'elaborate-ok', memory: 'git', verification: 'on' };
   if (interactive) {
-    for (const key of ['action', 'communication', 'scope', 'memory']) {
+    for (const key of ['action', 'communication', 'scope', 'memory', 'verification']) {
       const v = await p.select({ message: KNOBS[key].question, options: KNOBS[key].options });
       if (p.isCancel(v)) bail('Cancelled.');
       picks[key] = v;

@@ -56,7 +56,7 @@ Before showing the user, adversarially review your own rubric against the anti-p
 
 Show the user the draft spec (objective, rubric, stop conditions, constraints, budget) and ask for a yes / edits. On yes:
 
-1. Write it to `.ultragoal/goals/active.md` with `status: active` and `session: ${CLAUDE_SESSION_ID}` in the frontmatter — the gate binds to this session, so other sessions in the repo stay free for side questions (they're told how to take the goal over).
+1. Write it to `.ultragoal/goals/active.md` with `status: active`, `session: ${CLAUDE_SESSION_ID}` (the gate binds to this session, so other sessions in the repo stay free for side questions), and `verify:` copied from the `verification` knob in `.ultragoal/config.md` (default on; off means the gate accepts a fully checked rubric without the verifier pass).
 2. Reset the loop state: write `0` to `.ultragoal/goals/.turns` and delete `.ultragoal/goals/.rubric-hash` and `.ultragoal/goals/results.tsv` if they exist (they belong to the previous goal).
 3. Tell the user the loop is armed: the Stop gate will keep the session working until the rubric is independently verified and lessons are distilled — and how to bail out (`/ultragoal:stop`, or the turn budget).
 

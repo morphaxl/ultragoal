@@ -30,17 +30,17 @@ And the pitch in one line: **you never have to learn prompt engineering.** You b
 npx ultragoal
 ```
 
-An interactive installer walks you through it: pick who it's for (just you, or the team via project scope), and optionally pre-configure the current repo — four working-style questions, and it scaffolds `.ultragoal/` plus the CLAUDE.md block on the spot. `--yes` skips all prompts for CI; `--setup` pre-configures the repo; `uninstall` removes it. It wraps Claude Code's native plugin system — prefer that route directly? Inside Claude Code:
+An interactive installer walks you through it: confirm where it goes — **this project is the default** (it lands in `.claude/settings.json`, so teammates get it through git; `--global` installs machine-wide instead) — and optionally pre-configure the repo: five working-style questions, and it scaffolds `.ultragoal/` plus the CLAUDE.md block on the spot. `--yes` skips all prompts for CI; `--setup` pre-configures the repo; `uninstall` removes it. It wraps Claude Code's native plugin system — prefer that route directly? Inside Claude Code:
 
 ```text
 /plugin marketplace add morphaxl/ultragoal
 /plugin install ultragoal@ultragoal
 ```
 
-For a team, install to project scope so the config lands in `.claude/settings.json` and teammates get prompted automatically:
+Want it available in every project on your machine instead of just this one?
 
 ```bash
-npx ultragoal --project
+npx ultragoal --global
 ```
 
 Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Uninstall anytime with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
@@ -107,14 +107,15 @@ Memory is **git-committed by default**: it's your team's growing brain — every
 
 ## The knobs
 
-Four questions at first run, stored in `.ultragoal/config.md`, each backed verbatim by Anthropic's official prompting guidance:
+Five questions at first run, stored in `.ultragoal/config.md`, each backed verbatim by Anthropic's official prompting guidance:
 
 | Knob | Options (default first) |
 |---|---|
 | Action mode | proactive · conservative |
 | Communication | lead-with-outcome · detailed |
-| Scope discipline | minimal · elaborate-ok |
+| Scope discipline | polish-welcome · minimal |
 | Memory sharing | git-committed · local-only |
+| Verification | on · off — off lets goals finish on a fully checked rubric + saved lessons, skipping the independent verifier pass |
 
 Change them anytime with `/ultragoal:setup` or by editing the markdown.
 

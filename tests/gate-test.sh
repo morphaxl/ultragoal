@@ -26,7 +26,7 @@ fresh() { # new sandbox; sets T, UG, GOAL
   mkdir -p "$UG/goals" "$UG/memory"
 }
 
-goalfile() { # status kind budget session
+goalfile() { # status kind budget session verify
   cat > "$GOAL" <<EOF
 ---
 slug: t
@@ -34,6 +34,7 @@ status: ${1:-active}
 kind: ${2:-task}
 budget: ${3:-25}
 session: ${4:-}
+verify: ${5:-on}
 created: 2026-06-10
 ---
 # Rubric
@@ -91,6 +92,12 @@ fresh; goalfile active; run_gate
 tmp="$GOAL.t"; sed 's/item one/item ONE CHANGED/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; run_gate
 check "rubric change -> integrity note" 2 "$RC" "Rubric section changed" "$ERR"
 run_gate; grep -q "Rubric section changed" "$ERR" && check "integrity note repeats" 1 0 || check "integrity note fires once" 2 "$RC"
+
+fresh; goalfile active task 25 "" off; run_gate
+check "verify off + unchecked -> still blocks" 2 "$RC" "Verification is OFF" "$ERR"
+check_all_boxes; run_gate
+check "verify off + all checked -> distill, no verdict needed" 2 "$RC" "Distill" "$ERR"
+grep -q "no valid verification" "$ERR" && check "verify off skips verdict demand" 0 1 || check "verify off skips verdict demand" 0 0
 
 fresh; goalfile active task 1; run_gate           # turn 1: normal block
 run_gate; check "turn budget+1 -> nudge" 2 "$RC" "budget reached" "$ERR"

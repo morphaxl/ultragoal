@@ -7,12 +7,13 @@ Initialize (or reconfigure) ultragoal for this project. Takes about a minute.
 
 ## 1. Knobs
 
-Ask the user the four questions below in **one** AskUserQuestion call (recommended default first). If `.ultragoal/config.md` already exists, show current values and ask only what they want changed. If running non-interactively, take all defaults.
+Ask the user the five questions below in **one** AskUserQuestion call (recommended default first). If `.ultragoal/config.md` already exists, show current values and ask only what they want changed. If running non-interactively, take all defaults.
 
 1. **Action mode** — proactive (default) / conservative
 2. **Communication** — lead-with-outcome (default) / detailed
-3. **Scope discipline** — minimal (default) / elaborate-ok
+3. **Scope discipline** — elaborate-ok, polish welcome (default) / minimal
 4. **Memory sharing** — git-committed, team-shared (default) / local-only (gitignored)
+5. **Verification** — on (default: a fresh-context verifier must sign off before a goal finishes) / off (checked rubric + saved lessons suffice; faster, less rigorous)
 
 Three more settings with sensible defaults — mention they exist in `config.md` rather than asking: default turn budget (25), verification cadence (before claiming any rubric item), and interview depth (quick; "deep" runs a multi-round interview for big features).
 

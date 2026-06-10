@@ -47,6 +47,11 @@ slug="$(sed -n 's/^slug:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1)"
 kind="$(sed -n 's/^kind:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
 [ -n "$kind" ] || kind="task"
 
+# verify: off — owner opted out of independent verification for this goal.
+# Checked boxes (with evidence) and distillation still gate the finish.
+verify="$(sed -n 's/^verify:[[:space:]]*//p' "$GOAL" 2>/dev/null | head -1 | tr -d '[:space:]')"
+[ "$verify" = "off" ] || verify="on"
+
 # ---- rubric integrity -------------------------------------------------------
 # The checks are frozen at arm time. A changed rubric is allowed (specs are
 # user-editable) but is surfaced, and it invalidates prior verifier verdicts
@@ -113,6 +118,9 @@ last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
 case "$last_verdict" in
   *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) [ -n "$rubric_hash" ] && verified=1 ;;
 esac
+if [ "$verify" = "off" ] && [ "$unchecked_count" -eq 0 ]; then
+  verified=1
+fi
 
 if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
   {
@@ -135,13 +143,15 @@ Experiment protocol (the ratchet):
 - Out of ideas? Re-read the code for unexplored angles, combine previous near-misses, then try something structurally different. Several stale experiments in a row means change approach, not parameters.
 EOF
     else
-      cat <<'EOF'
-Protocol:
-- Never check a rubric box without evidence from a command you ran this session.
-- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the goal file. Only a valid PASS verdict bound to the current rubric completes the goal.
-- Log structural decisions and dead ends in the Decision journal as you go.
-- A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.
-EOF
+      echo 'Protocol:'
+      echo '- Never check a rubric box without evidence from a command you ran this session.'
+      if [ "$verify" = "off" ]; then
+        echo '- Verification is OFF for this goal: your own command evidence suffices to check a box — the evidence must still be real and from this session.'
+      else
+        echo '- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the goal file. Only a valid PASS verdict bound to the current rubric completes the goal.'
+      fi
+      echo '- Log structural decisions and dead ends in the Decision journal as you go.'
+      echo '- A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.'
     fi
     echo 'You are operating autonomously toward this goal. For reversible actions that serve it, proceed without asking. If a user correction surfaces, write it to memory immediately — it is the highest-confidence signal you will receive. If you are blocked on input only the user can provide, set "status: paused" with a note and stop.'
   } >&2

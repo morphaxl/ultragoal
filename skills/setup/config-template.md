@@ -11,13 +11,15 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 |---|---|
 | action-mode | proactive \| conservative |
 | communication | lead-with-outcome \| detailed |
-| scope | minimal \| elaborate-ok |
+| scope | elaborate-ok \| minimal |
 | memory-sharing | git \| local |
+| verification | on \| off |
 | default-budget | 25 |
 | verification-cadence | every-claim \| every-3-turns \| every-5-turns |
 | interview-depth | quick \| deep |
 
 Notes:
+- verification off = goals finish on a fully checked rubric + distilled lessons, without the independent verifier pass. The goal skill copies this into each spec as `verify: on|off` (editable per goal).
 - default-budget is the `budget:` a new goal spec starts with.
 - verification-cadence controls when the goal loop dispatches the verifier subagent.
 - interview-depth: quick = one batch of up to ~5 questions; deep = multi-round (intent → shape of done → scope edges → risks → verification). Saying "deep interview" or "quick" in a goal brief overrides it per-goal.
