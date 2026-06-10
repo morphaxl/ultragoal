@@ -26,24 +26,24 @@ And the pitch in one line: **you never have to learn prompt engineering.** You b
 
 ## Install
 
+```bash
+npx ultragoal
+```
+
+That's it. (It wraps Claude Code's native plugin system — nothing is scaffolded into your repo until you use it.) Prefer the native route? Inside Claude Code:
+
 ```text
 /plugin marketplace add morphaxl/ultragoal
 /plugin install ultragoal@ultragoal
 ```
 
-Or from the terminal in one line:
-
-```bash
-claude plugin marketplace add morphaxl/ultragoal && claude plugin install ultragoal@ultragoal
-```
-
 For a team, install to project scope so the config lands in `.claude/settings.json` and teammates get prompted automatically:
 
 ```bash
-claude plugin install ultragoal@ultragoal --scope project
+npx ultragoal --project
 ```
 
-Requires Claude Code ≥ 2.1.139.
+Requires Claude Code ≥ 2.1.139. Uninstall anytime with `npx ultragoal uninstall`.
 
 ## Sixty seconds to your first goal
 

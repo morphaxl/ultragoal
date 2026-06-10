@@ -1,0 +1,30 @@
+{
+  "name": "ultragoal",
+  "version": "0.2.0",
+  "description": "Goal loops for Claude Code — tell Claude what you want once; it works until the job is verifiably done, then saves what it learned. One-command installer for the ultragoal plugin.",
+  "bin": {
+    "ultragoal": "installer/cli.js"
+  },
+  "files": [
+    "installer/"
+  ],
+  "repository": "github:morphaxl/ultragoal",
+  "homepage": "https://github.com/morphaxl/ultragoal#readme",
+  "bugs": "https://github.com/morphaxl/ultragoal/issues",
+  "author": "morphaxl (https://github.com/morphaxl)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "plugin",
+    "goal",
+    "loop",
+    "autonomous",
+    "agent",
+    "verification",
+    "memory"
+  ]
+}
