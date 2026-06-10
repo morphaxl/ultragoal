@@ -30,7 +30,7 @@ And the pitch in one line: **you never have to learn prompt engineering.** You b
 npx ultragoal
 ```
 
-That's it. (It wraps Claude Code's native plugin system — nothing is scaffolded into your repo until you use it.) Prefer the native route? Inside Claude Code:
+An interactive installer walks you through it: pick who it's for (just you, or the team via project scope), and optionally pre-configure the current repo — four working-style questions, and it scaffolds `.ultragoal/` plus the CLAUDE.md block on the spot. `--yes` skips all prompts for CI; `--setup` pre-configures the repo; `uninstall` removes it. It wraps Claude Code's native plugin system — prefer that route directly? Inside Claude Code:
 
 ```text
 /plugin marketplace add morphaxl/ultragoal

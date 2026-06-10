@@ -9,3 +9,4 @@ research/
 
 # private reference material (user's internal docs)
 beyondplay-agent-os.md
+node_modules/
