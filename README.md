@@ -43,13 +43,13 @@ Want it available in every project on your machine instead of just this one?
 npx ultragoal --global
 ```
 
-### Autopilot
+### Autopilot — the recommended way to run goals
 
 ```bash
 npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contract tests"
 ```
 
-One command from terminal to running goal loop, **at full autonomy by default**: it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions` — zero prompts of any kind until the goal is verified done. That's the point of a goal loop: nothing blocks the turns. It means exactly what it says, though — Claude can run any command without asking — so favor repos you can reset or a container, and know your two dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
+This is how ultragoal is meant to be used: one command from terminal to running goal loop, at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the turn budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your two dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
 
 Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Update anytime with `npx ultragoal update` (the marketplace also auto-updates); uninstall with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
@@ -176,7 +176,7 @@ Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](
 
 **Does it spend a lot of tokens?** The gate itself is free (no model call). The loop spends what the work needs — that's the point of goal-directed runs. Budgets cap the blast radius; start small (10–15 turns) to calibrate.
 
-**Can I run it unattended?** Yes — pair with auto mode (per-tool prompts) the same way the official `/goal` docs recommend, or use the native-fallback line headlessly.
+**Can I run it unattended?** Yes — that's the recommended mode: `npx ultragoal run "<brief>"` launches at full autonomy, and `--headless` runs the loop to completion with no UI at all. The discipline lives in the rubric, the verifier, and the budget — not in you approving each tool call.
 
 **Uninstall?** `npx ultragoal uninstall` removes the plugin and marketplace entry; your `.ultragoal/` state stays — it's yours. Add `--purge` to delete a repo's state too (restores CLAUDE.md byte-for-byte).
 
