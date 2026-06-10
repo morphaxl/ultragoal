@@ -77,6 +77,7 @@ Walk away mid-goal, close the laptop, `/clear` — the goal survives. Next sessi
 |---|---|
 | `/ultragoal:goal <brain dump>` | The front door: interview → spec → armed loop → execution |
 | `/ultragoal:status` | Dashboard: rubric progress, turn budget, last verdict, memory health |
+| `/ultragoal:verify` | Independent audit of any goal — fresh-context verifier re-runs every check |
 | `/ultragoal:stop` | Bail out gracefully — pause or abandon, gate releases instantly |
 | `/ultragoal:remember` | Distill lessons from the current session into memory |
 | `/ultragoal:compact` | Memory hygiene pass — merge, generalize, drop stale (nudged every ~10 sessions) |
