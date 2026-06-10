@@ -12,7 +12,10 @@
     "@clack/prompts": "^0.11.0",
     "picocolors": "^1.1.1"
   },
-  "repository": "github:morphaxl/ultragoal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/morphaxl/ultragoal.git"
+  },
   "homepage": "https://github.com/morphaxl/ultragoal#readme",
   "bugs": "https://github.com/morphaxl/ultragoal/issues",
   "author": "morphaxl (https://github.com/morphaxl)",
