@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, rmSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
@@ -52,7 +52,9 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal --yes        non-interactive: user-scope install, no prompts
     npx ultragoal --project    install at project scope (team-shared via git)
     npx ultragoal --setup      also pre-configure the current repo (with --yes: defaults)
-    npx ultragoal uninstall    remove the plugin
+    npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
+    npx ultragoal uninstall --purge
+                               also delete this repo's .ultragoal/ and CLAUDE.md block
 
   Wraps Claude Code's native plugin system:
     claude plugin marketplace add ${MARKETPLACE}
@@ -65,9 +67,63 @@ if (flag('--help') || flag('-h')) {
 
 // ------------------------------------------------------------- uninstall ---
 if (args[0] === 'uninstall') {
-  const res = claude(['plugin', 'uninstall', PLUGIN], { quiet: false });
-  if (res.missing) bail('Claude Code CLI not found — nothing to uninstall from.');
-  process.exit(res.status ?? 0);
+  banner();
+  p.intro(pc.bgMagenta(pc.black(' ultragoal uninstaller ')));
+
+  const us = p.spinner();
+  us.start('Removing the plugin');
+  const res = claude(['plugin', 'uninstall', PLUGIN]);
+  if (res.missing) {
+    us.stop(pc.red('Claude Code CLI not found'));
+    bail('Nothing to uninstall from.');
+  }
+  us.stop(res.status === 0 ? 'Plugin removed' : pc.dim('Plugin was not installed'));
+
+  us.start('Removing the marketplace entry');
+  const mk = claude(['plugin', 'marketplace', 'remove', MARKETPLACE_NAME]);
+  us.stop(mk.status === 0 ? 'Marketplace removed' : pc.dim('Marketplace was not registered'));
+
+  // Per-repo state: yours by default — only deleted on explicit request.
+  const root = process.cwd();
+  const ug = join(root, '.ultragoal');
+  if (existsSync(ug)) {
+    let purge = flag('--purge');
+    if (!purge && interactive) {
+      const yn = await p.confirm({
+        message: 'Also delete this repo\'s .ultragoal/ (goals + memory) and the CLAUDE.md block?',
+        initialValue: false,
+      });
+      if (p.isCancel(yn)) bail('Cancelled.');
+      purge = yn;
+    }
+    if (purge) {
+      rmSync(ug, { recursive: true, force: true });
+      const cm = join(root, 'CLAUDE.md');
+      if (existsSync(cm)) {
+        const stripped = readFileSync(cm, 'utf8')
+          .replace(/\n*<!-- ultragoal:start[\s\S]*?<!-- ultragoal:end -->\n*/, '\n')
+          .trim();
+        if (stripped) writeFileSync(cm, stripped + '\n');
+        else unlinkSync(cm);
+      }
+      const gi = join(root, '.gitignore');
+      if (existsSync(gi)) {
+        const kept = readFileSync(gi, 'utf8')
+          .split('\n')
+          .filter((l) => !/^# ultragoal local state$|^\.ultragoal\//.test(l.trim()))
+          .join('\n')
+          .replace(/\n{3,}/g, '\n\n');
+        if (kept.trim()) writeFileSync(gi, kept);
+        else unlinkSync(gi);
+      }
+      p.log.success('Repo state deleted (.ultragoal/, CLAUDE.md block, .gitignore entries).');
+    } else {
+      p.log.info('Kept this repo\'s .ultragoal/ — your goals and memory are yours. Delete later with: npx ultragoal uninstall --purge');
+    }
+  }
+
+  p.outro(pc.green('ultragoal is fully uninstalled.') + pc.dim(' Reinstall anytime: npx ultragoal'));
+  process.exit(0);
 }
 
 // ----------------------------------------------------------- knob blocks ---
