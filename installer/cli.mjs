@@ -398,6 +398,6 @@ if (wantSetup && !alreadySetup) {
 p.outro(
   `${pc.green('ultragoal is ready.')} Open Claude Code and describe what you want:\n\n` +
     `  ${pc.cyan('/ultragoal:goal')} ${pc.dim('<your messy brain dump — a raw voice transcript is fine>')}\n\n` +
-    `${didSetup ? '' : pc.dim('First goal in a repo asks 4 quick style questions (or run npx ultragoal --setup).\n')}` +
+    `${didSetup ? '' : pc.dim('First goal in a repo asks 5 quick style questions (or run npx ultragoal --setup).\n')}` +
     pc.dim(`Docs: ${DOCS}`)
 );
