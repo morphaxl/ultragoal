@@ -1,0 +1,11 @@
+# downloaded reference docs (Anthropic's content — linked from DESIGN.md, not redistributed)
+research/
+
+# local state if the plugin is ever dogfooded in this repo
+.ultragoal/goals/.turns
+.ultragoal/memory/.sessions
+
+.DS_Store
+
+# private reference material (user's internal docs)
+beyondplay-agent-os.md

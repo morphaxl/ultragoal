@@ -1,0 +1,17 @@
+{
+  "name": "ultragoal",
+  "owner": {
+    "name": "morphaxl",
+    "url": "https://github.com/morphaxl"
+  },
+  "description": "Marketplace hosting the ultragoal plugin — the Fable 5 loop workflow for Claude Code.",
+  "plugins": [
+    {
+      "name": "ultragoal",
+      "source": "./",
+      "description": "Tell Claude what you want once; it works until the job is verifiably done, then saves what it learned.",
+      "category": "workflows",
+      "tags": ["goal", "loop", "autonomous", "verification", "memory"]
+    }
+  ]
+}
