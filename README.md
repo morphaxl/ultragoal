@@ -43,6 +43,14 @@ Want it available in every project on your machine instead of just this one?
 npx ultragoal --global
 ```
 
+### Autopilot
+
+```bash
+npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contract tests"
+```
+
+One command from terminal to running goal loop: it makes sure the plugin is installed, then launches Claude Code with your brief armed in **auto mode** (tool calls approved automatically; the gate keeps the turns coming). Two flags: `--headless` runs the whole loop non-interactively and exits when the goal completes; `--dangerous` launches with `--dangerously-skip-permissions` — zero prompts of any kind. The dangerous flag means exactly what it says: Claude can run any command without asking, so use it inside a container/VM or a repo you can reset, never on a machine with credentials you care about.
+
 Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Update anytime with `npx ultragoal update` (the marketplace also auto-updates); uninstall with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
 ## Sixty seconds to your first goal

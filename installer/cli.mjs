@@ -53,6 +53,10 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal --project    install at project scope (the default; team-shared via git)
     npx ultragoal --global     install machine-wide (user scope) instead
     npx ultragoal --setup      also pre-configure the current repo (with --yes: defaults)
+    npx ultragoal run "<brief>"
+                               launch Claude Code with the goal armed (auto mode)
+        --dangerous            full autonomy: --dangerously-skip-permissions (no prompts at all)
+        --headless             non-interactive: runs the loop to completion and exits
     npx ultragoal update       update to the latest version
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
     npx ultragoal uninstall --purge
@@ -65,6 +69,41 @@ if (flag('--help') || flag('-h')) {
   Docs: ${DOCS}
 `);
   process.exit(0);
+}
+
+// ------------------------------------------------------------------- run ---
+if (args[0] === 'run') {
+  const rest = args.slice(1);
+  const dangerous = rest.includes('--dangerous');
+  const headless = rest.includes('--headless');
+  const brief = rest.filter((a) => !a.startsWith('--')).join(' ').trim();
+  banner();
+  p.intro(pc.bgGreen(pc.black(' ultragoal autopilot ')));
+  if (!brief) {
+    bail('Give it a brief: npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contract tests"');
+  }
+  const cv = claude(['--version']);
+  if (cv.missing) bail('Install Claude Code first: https://claude.com/claude-code');
+
+  // ensure the plugin is present — idempotent and quiet
+  const s0 = p.spinner();
+  s0.start('Making sure ultragoal is installed');
+  const a0 = claude(['plugin', 'marketplace', 'add', MARKETPLACE]);
+  if (a0.status !== 0) claude(['plugin', 'marketplace', 'update', MARKETPLACE_NAME]);
+  claude(['plugin', 'install', PLUGIN]);
+  s0.stop('Plugin ready');
+
+  const mode = dangerous ? ['--dangerously-skip-permissions'] : ['--permission-mode', 'auto'];
+  if (dangerous) {
+    p.log.warn('FULL AUTONOMY: --dangerously-skip-permissions means Claude can run ANY command without asking. Use inside a container/VM or a repo you can reset — never on a machine with credentials you care about.');
+  } else {
+    p.log.info('Auto mode: tool calls are approved automatically within each turn; the gate keeps the turns coming. Add --dangerous for zero prompts of any kind.');
+  }
+  p.outro(headless ? 'Running the goal loop headless — output follows.' : 'Handing you over to Claude Code with the goal armed.');
+  const launch = spawnSync('claude', [...mode, ...(headless ? ['-p'] : []), `/ultragoal:goal ${brief}`], {
+    stdio: 'inherit',
+  });
+  process.exit(launch.status ?? 0);
 }
 
 // ---------------------------------------------------------------- update ---
@@ -399,7 +438,7 @@ let wantSetup = flag('--setup');
 if (interactive && !alreadySetup && !wantSetup) {
   const yn = await p.confirm({
     message: 'Pre-configure this repo now? (picks your working style, scaffolds .ultragoal/ — ~30s)',
-    initialValue: false,
+    initialValue: true,
   });
   if (p.isCancel(yn)) bail('Cancelled.');
   wantSetup = yn;
