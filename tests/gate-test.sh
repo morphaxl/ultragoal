@@ -124,6 +124,27 @@ printf '# x\n---\n## Evidence log\n[2026-01-01 S1] old\n' > "$UG/memory/facts.md
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"
 echo "$OUT" | grep -q "Staleness warning" && check "ctx: staleness warning" 0 0 || check "ctx: staleness warning" 0 1
 
+echo "rubric library lint"
+
+RUBRICS="$HERE/skills/goal/rubrics"
+tcount="$(ls "$RUBRICS"/*.md 2>/dev/null | grep -vc INDEX)"
+[ "$tcount" -ge 14 ] && check "library has >=14 templates ($tcount)" 0 0 || check "library has >=14 templates ($tcount)" 0 1
+
+idx_entries="$(grep -c '](.*\.md)' "$RUBRICS/INDEX.md" 2>/dev/null)"
+[ "$idx_entries" -ge 14 ] && check "INDEX lists >=14 templates ($idx_entries)" 0 0 || check "INDEX lists >=14 templates ($idx_entries)" 0 1
+
+lint_ok=1
+for f in "$RUBRICS"/*.md; do
+  case "$f" in *INDEX.md) continue ;; esac
+  # the VERIFIER item is exempt: its check IS the verifier protocol
+  unchecked_wo_check="$(grep '^- \[ \]' "$f" | grep -v 'VERIFIER' | grep -vc '— check:')"
+  if [ "$unchecked_wo_check" != "0" ]; then echo "    lint: $(basename "$f") has $unchecked_wo_check rubric line(s) without '— check:'"; lint_ok=0; fi
+  grep -q '^## Stop conditions' "$f" || { echo "    lint: $(basename "$f") missing Stop conditions"; lint_ok=0; }
+  src="$(awk '/^## Sources/{f=1; next} f' "$f" | grep -c '^- http')"
+  [ "$src" -ge 2 ] || { echo "    lint: $(basename "$f") has <2 sources"; lint_ok=0; }
+done
+[ "$lint_ok" = 1 ] && check "every rubric line carries a check; stop conditions + >=2 sources per template" 0 0 || check "every rubric line carries a check; stop conditions + >=2 sources per template" 0 1
+
 echo
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" = 0 ] || exit 1

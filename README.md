@@ -69,6 +69,8 @@ Walk away mid-goal, close the laptop, `/clear` — the goal survives. Next sessi
 
 **Task goals** — "build this, fix this, migrate this." Done means the checklist holds.
 
+Either kind starts from the **rubric library** when the brief matches a known domain: 16 research-backed templates (Next.js features, web performance, accessibility, API quality, security, bug fixes, refactors, test health, CI speed, dependency upgrades, CLI tools, docs, React Native, app-store readiness, realtime stability) with every threshold cited — Core Web Vitals, WCAG 2.2, OWASP 2025, Google's engineering practices — and every item carrying the command that proves it. Templates also point at skills worth pairing (like Vercel's react best-practices skills from skills.sh).
+
 **Experiment goals** — "make this number better." When the brief is an optimization (build time, latency, bundle size, test runtime), ultragoal compiles it into a measure-and-ratchet loop modeled on Karpathy's [autoresearch](https://github.com/karpathy/autoresearch): establish the baseline first, then one change per experiment — commit, measure with an immutable command, keep only if the number strictly improved, `git reset` if it didn't. Every attempt lands in `results.tsv` (keeps, discards, *and* crashes), and since each row carries its commit hash, any discarded idea's full diff stays recoverable. The verifier re-runs the final measurement itself and fails the goal if the measure command was ever touched — no moving goalposts. The same pattern took Shopify from "one-shot 'make it faster' prompts fail" to a 65% faster build, unattended.
 
 ## Commands

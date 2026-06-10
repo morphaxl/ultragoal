@@ -1,0 +1,28 @@
+# Next.js / React feature
+
+Use when: building or changing a feature in a Next.js or React app — success is "exists and works".
+Kind: task
+
+## Skills to pair
+If available in this session (find more on skills.sh): `vercel-react-best-practices`, `vercel-composition-patterns` — apply them *while* building, not as a cleanup pass.
+
+## Rubric
+- [ ] Typecheck passes — check: `npx tsc --noEmit` exits 0
+- [ ] Lint passes — check: `npx eslint .` exits 0 (Next.js 16 removed `next lint`; `next build` no longer lints — run it explicitly)
+- [ ] Unit/integration tests pass and cover the feature's main paths — check: `npx vitest run` (or `npx jest --ci`) exits 0; new test files exist in the diff
+- [ ] Production build succeeds — check: `npx next build` exits 0 (also catches client-hooks-in-server-components)
+- [ ] No hydration errors on touched routes — check: Playwright against `next build && next start`, collecting `page.on('console')` + `page.on('pageerror')`, zero matches for `/hydrat(ion|e)/i` or React errors #418/#423/#425
+- [ ] Server/client boundary respected — check: server-only modules import the `server-only` package (build fails if client-imported); `grep -r "NEXT_PUBLIC_" .env*` reviewed for secret leaks
+- [ ] Error and loading states exist for new route segments — check: `find app -name "error.tsx"` and `find app -name "loading.tsx"` (or `<Suspense>`) cover every async segment touched
+- [ ] VERIFIER: independent sign-off recorded in the Verification log
+
+## Stop conditions
+- Budget reached, or the same item fails verification 3 consecutive times, or the feature requires a public-API change the spec didn't authorize
+
+## Constraints
+- No other route's tests or snapshots modified — check: `git diff --stat main -- 'app/**'` confined to the feature's segments
+
+## Sources
+- https://nextjs.org/docs/app/guides/upgrading/version-16
+- https://nextjs.org/docs/messages/react-hydration-error
+- https://react.dev/reference/react-dom/client/hydrateRoot

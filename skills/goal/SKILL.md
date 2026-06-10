@@ -48,6 +48,8 @@ First decide the goal's **kind**:
 - **`task`** (default): success is "this exists and works" — features, fixes, migrations, investigations.
 - **`experiment`**: success is "this number improved" — latency, build time, size, cost, score — and one command can measure it. Read [experiment-guide.md](experiment-guide.md) and compile the spec as a measure-and-ratchet loop instead of a checklist. If the user's brief is an optimize-ask but no reliable measure command exists, the spec's first rubric item is building one.
 
+**Check the rubric library first**: read [rubrics/INDEX.md](rubrics/INDEX.md) and if the brief matches a domain, load that template as your starting point — it carries research-backed thresholds and check commands. Adapt it to this repo (real commands, applicable items only); don't transplant blindly. Also scan the available skills in this session against the template's "Skills to pair" line and the task domain — if a matching skill exists (e.g. `frontend-design` for UI work, `vercel-react-best-practices` for React), plan to use it during execution and note it in the spec's Context.
+
 Copy the structure from [goal-template.md](goal-template.md) and write the rubric following [rubric-guide.md](rubric-guide.md) — read it; rubric quality decides whether this loop converges. A well-designed rubric is doing more work than the model.
 
 Before showing the user, adversarially review your own rubric against the anti-pattern list in the guide (vague judgments, unmeasurable criteria, missing stop conditions, no incremental order, checks the repo can't actually run). Fix what you find.
