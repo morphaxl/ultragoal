@@ -26,6 +26,15 @@ Four parts keep each other honest:
 
 And the pitch in one line: **you never have to learn prompt engineering.** You bring intent; ultragoal writes the expert-grade brief for itself, straight from Anthropic's playbook.
 
+## What it's for — work a plain agent session can't hold
+
+- **The overnight build with a hard done-bar.** A bare agent stops when it *believes* it's done — and unattended, belief is all you get; Anthropic added a whole prompt block because fabricated status reports were that common. Here, stopping before an independent verifier signs off is mechanically impossible.
+- **Hill-climbing a number.** "Make CI twice as fast", "get the bundle under 200KB" — experiment goals run a measure-and-ratchet loop with a frozen measure command and every attempt journaled. The verifier re-runs the final number itself, so nobody (including the agent) quietly moves the goalpost.
+- **The week-long migration.** Sessions die — context fills, laptops sleep, someone types `/clear`. The goal lives in a file, not the session: next start, the banner says *"turn 9 of 25"* and the loop resumes the same contract.
+- **Recurring jobs that actually compound.** Weekly dependency bumps, flaky-test hunts, doc sweeps — the gate won't release a goal until its lessons are distilled into project memory, so the fourth run is genuinely smarter and cheaper than the first instead of a fresh amnesiac.
+- **Delegation you can't personally review.** If you don't read code, an agent's confident summary is worthless to you. The verification log and evidence ledger — real commands, real outputs, signed by a reviewer that never saw the worker's reasoning — are a trust artifact you can act on.
+- **Handing work over mid-flight.** Goal state, turn count, decision journal, and memory are git-committed. A teammate pulls, takes over the goal, and the gate holds them to the same rubric. There's no vanilla equivalent of transferring a half-finished agent engagement.
+
 ## Install
 
 ```bash
@@ -53,7 +62,7 @@ npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contra
 
 This is how ultragoal is meant to be used: one command from terminal to running goal loop, at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the turn budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
 
-Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Update with `npx ultragoal update` — it sweeps **every** install in one go: user scope plus all per-project pins (project-scoped installs never auto-update on their own, so they go stale silently); restart sessions to apply. Uninstall with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
+Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual sweep — every install, user scope plus all per-project pins, in one go. Uninstall with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
 ## Sixty seconds to your first goal
 
