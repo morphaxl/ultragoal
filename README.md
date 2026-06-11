@@ -4,7 +4,7 @@
 
 You talk to it like a person — a messy, unedited voice note is fine. It asks the few questions it can't answer itself, agrees with you on what "done" means, then works on its own: turn after turn, session after session, until an independent reviewer confirms the work holds up. Then it writes down what it learned, so the next goal starts smarter.
 
-Underneath, this is the workflow Anthropic's engineers describe using with Fable 5: don't steer the model prompt by prompt — **design a loop where it self-corrects against honest feedback and manages its own memory.** ultragoal packages that whole system into a plugin you install with one command.
+Underneath is the goal-loop architecture Anthropic's engineers describe using with Fable 5 — the same one Claude Code ships natively as `/goal`: don't steer the model prompt by prompt, **design a loop where it self-corrects against honest feedback and manages its own memory.** The architecture is proven and the model is built for it. What ultragoal packages is everything the published workflow still assumes an expert does by hand: write a rubric where every line is checkable, wire up an independent verifier, keep a memory discipline, make the goal survive the session. **Goals on steroids** — the standard architecture, with the expertise built into the harness.
 
 Every mechanism in the loop is research-backed — verifier design, evidence ledgers, rubric architecture, memory provenance all trace to published results from Anthropic, DeepSeek, Alibaba, ByteDance, Tencent, and academic agent-systems work. The full mechanism→evidence map lives in [docs/research-foundations.md](docs/research-foundations.md), fed by dated research sweeps in [docs/research/](docs/research/).
 
@@ -22,9 +22,9 @@ Four parts keep each other honest:
 - **A real definition of done.** Every goal becomes a spec whose rubric is checkable by commands — "tests pass", "p95 under 200ms" — never vibes. In the research's words: *rubric design is the skill now; a well-designed rubric does more work than the model.*
 - **Fresh eyes, not self-review.** A separate verifier agent — with no knowledge of how the work was done — re-runs every check and tries to prove the work *wrong*. Anthropic's guidance is blunt: fresh-context verifiers outperform self-critique. The gate releases only on the verifier's sign-off, and the worker is instructed never to write that verdict itself. (Like everything in Claude Code, this is a prompt-level boundary, not a sandbox — the rigor comes from the separation and the honest rubric, not from locking the worker out of a file.)
 - **A loop that can't quit early.** A gate blocks Claude from stopping while the goal is unfinished — and because the goal lives in a file, it survives `/clear`, restarts, and days away. Goals are per-session: run different goals in different sessions of the same repo at once, each gated independently. Same architecture as Claude Code's built-in `/goal`, with upgrades (see [how the loop works](#how-the-loop-actually-works)).
-- **Memory that compounds.** Every goal ends by saving verified facts, working patterns, and dead ends into your repo. The continual-learning progression — fail → investigate → verify → distill → consult — runs on autopilot, for your whole team.
+- **Memory that compounds — for the whole team.** Every goal ends by saving verified facts, working patterns, and dead ends into your repo. Fable-class models run the continual-learning progression — fail → investigate → verify → distill → consult — largely on their own once they have somewhere durable to write. ultragoal's somewhere is **shared through git**, so every teammate's Claude feeds and consults one brain, and **provenance-tagged**, so the memory can't quietly start citing its own guesses as fact.
 
-And the pitch in one line: **you never have to learn prompt engineering.** You bring intent; ultragoal writes the expert-grade brief for itself, straight from Anthropic's playbook.
+And the pitch in one line: **you never have to learn prompt engineering — or loop engineering.** In Anthropic's own published experiments, the engineer still hand-writes the rubric. You bring intent; ultragoal writes the expert-grade goal for itself, straight from their playbook.
 
 ## What it's for — work a plain agent session can't hold
 
@@ -129,7 +129,7 @@ Everything the plugin produces is plain markdown you own — editable, diffable,
     └── failures.md      # dead ends, so no future session repeats them
 ```
 
-Memory files are two-layered, borrowing the structure of [Karpathy's LLM-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain: **compiled truth above the line** — rewritten as understanding improves — and an **append-only, dated evidence log below it** that is never edited. Every claim carries its provenance — `[VERIFIED · ran the command]`, `[READ · from docs]`, `[INFERRED]`, `[USER-CORRECTION]` — so confident prose can never quietly masquerade as checked fact, and the compaction pass cleans the synthesis without ever touching the evidence. When the repo has moved a lot since memory was last fed, the session banner says so and tells Claude to re-verify before trusting.
+Memory files are two-layered, borrowing the structure of [Karpathy's LLM-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain: **compiled truth above the line** — rewritten as understanding improves — and an **append-only, dated evidence log below it** that is never edited. Every claim carries its provenance — `[VERIFIED · ran the command]`, `[READ · from docs]`, `[INFERRED]`, `[USER-CORRECTION]` — so confident prose can never quietly masquerade as checked fact. The known failure of agent memory is the closed loop that cites its own past guesses as sources; provenance is the structural fix, and the compaction pass cleans the synthesis without ever touching the evidence. When the repo has moved a lot since memory was last fed, the session banner says so and tells Claude to re-verify before trusting.
 
 Plus a small fenced block in `CLAUDE.md` (shown to you before it's written) wiring the memory protocol and your chosen style knobs.
 
@@ -151,7 +151,7 @@ Change them anytime with `/ultragoal:setup` or by editing the markdown.
 
 ## How the loop actually works
 
-`/goal` in Claude Code is a Stop hook under the hood: something checks a condition after every turn and blocks the stop until it holds. Ultragoal ships that same architecture with four differences:
+`/goal` in Claude Code is a Stop hook under the hood: something checks a condition after every turn and blocks the stop until it holds. Ultragoal ships that same architecture — the steroids are four specific differences:
 
 - **The model can arm it.** Claude can't invoke built-in `/goal` itself; it *can* write a goal file, which is all the ultragoal gate needs. One skill takes you from ramble to running loop.
 - **It persists, and it's per-session.** Native `/goal` dies with the session and there's one at a time. The ultragoal gate reads files keyed by session, so a goal spans sessions and days — and different sessions in the same repo can each run their own goal concurrently, with the gate enforcing only the one you armed in the session that's stopping.
@@ -170,7 +170,7 @@ Always-on context cost is a handful of skill descriptions — on the order of a 
 
 ## Where this comes from
 
-- Lance Martin (Anthropic), [*Designing loops with Fable 5*](https://x.com/RLanceMartin/article/2064397389189071163) — loops over prompts; rubric design as the skill; verifier subagents over self-critique; the fail → investigate → verify → distill → consult progression this plugin mechanizes.
+- Lance Martin (Anthropic), [*Designing loops with Fable 5*](https://x.com/RLanceMartin/article/2064397389189071163) — loops over prompts; rubric design as the skill; verifier subagents over self-critique; the fail → investigate → verify → distill → consult progression this plugin mechanizes. His experiments run on the native primitives with a hand-written rubric — ultragoal is that practice, packaged.
 - Anthropic, [*Prompting Claude Fable 5*](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5) — the verbatim behavior blocks behind the knobs, the memory protocol, and the verification guidance.
 - Anthropic, [*Prompting best practices*](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) and the [Claude Code docs](https://code.claude.com/docs) on `/goal`, hooks, skills, and sub-agents.
 - Andrej Karpathy, [autoresearch](https://github.com/karpathy/autoresearch) — the experiment ratchet behind experiment goals: baseline-first, strict improvement, keep/revert via git, every attempt journaled, the evaluator immutable.
@@ -179,6 +179,8 @@ Always-on context cost is a handful of skill descriptions — on the order of a 
 Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](DESIGN.md).
 
 ## FAQ
+
+**Fable 5 already handles long-horizon work — why add a harness?** Not to make the model capable; the loop primitives are native and the model is built for them. Two things survive that fact. First, the published workflow still assumes expertise: in Anthropic's own experiments the engineer hand-writes the nine-criteria rubric, knows to spawn a fresh-context verifier, and runs a memory discipline — ultragoal does those for you. Second, one problem is structural, not a capability gap: a worker grading its own work fails in every model generation, which is why Anthropic's guidance reaches for an independent verifier *with Fable 5 specifically*. The gate makes that separation mechanical instead of habitual.
 
 **Do I need to know how to prompt?** No — that's the point. You bring what only you know (what you want, who it's for, what must not break); ultragoal writes the expert-grade brief for itself. You review a plan in plain English, never author a prompt.
 
