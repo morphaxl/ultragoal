@@ -15,7 +15,10 @@ created: <YYYY-MM-DD>
 
 # Objective
 <One paragraph: the outcome, why it matters, and who/what it is for. Intent first —
-the model performs better when it understands the reason, not only the request.>
+the model performs better when it understands the reason, not only the request.
+End by naming the difficulty class plainly — routine / hard / hardest-unsolved —
+and instruct: scope the work like it's at the top of that range. Under-scoping
+wastes the model's range the same way over-ceremony wastes tokens.>
 
 # Context
 <Distilled from the brief + interview + repo scan + memory: key constraints, prior art,
