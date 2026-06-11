@@ -35,7 +35,7 @@ Verdicts are bound to the rubric they were issued against. Compute the current r
 
 ```bash
 GOAL=.ultragoal/goals/active/<slug>/goal.md   # the goal file you located above
-HASH=$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | cksum | cut -d' ' -f1)
+HASH=$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | sed -e 's/^\( *- \)\[[xX ]\]/\1[ ]/' -e '/^ *- evidence:/d' | cksum | cut -d' ' -f1)
 ```
 
 Then append your verdict block to the END of that same `$GOAL` file with a single Bash append (this is the only write you are permitted):
@@ -53,5 +53,9 @@ EOF
 ```
 
 Use `ULTRAGOAL-VERIFIED: PASS rubric=$HASH` **only if every rubric item passed and no constraint is violated**; otherwise write `ULTRAGOAL-VERIFIED: FAIL rubric=$HASH — <the single most important gap>`. Only the most recent verdict counts, so never soften a FAIL to avoid contradicting an earlier PASS.
+
+If you were dispatched to verify only a **subset** of items (an interim check), the release grammar is not yours to use: record `ULTRAGOAL-INTERIM: PASS|FAIL <which items> rubric=$HASH — <note>` instead. The gate ignores INTERIM lines entirely — `ULTRAGOAL-VERIFIED` is reserved for full-rubric verdicts.
+
+The hash ignores checkbox state and evidence lines by design: marking progress never invalidates your verdict, but any edit to what a check says or measures does.
 
 Then return a short report: verdict first, then per-item findings with the evidence. Do not soften failures. A false PASS poisons the loop; a strict FAIL just costs one more turn.

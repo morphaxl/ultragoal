@@ -26,6 +26,7 @@
 - One giant item instead of an incremental sequence
 - A check command that doesn't exist in this repo or can't run locally
 - Items the worker can satisfy by editing the check instead of the work (pin the check: exact command, exact path, exact threshold)
+- Count-checks that grep the goal file itself — they match the rubric's own text, evidence lines, and the verifier's appended tables, silently inflating the count. Scope them to their section with an awk range (`awk '/^# Section/,/^# Next/'`)
 
 9. **Checks emit one decisive line.** Prefer commands whose output settles the item at a glance — an exit code, a single number, a PASS/FAIL. Wrap noisy commands (`cmd > /tmp/x.log 2>&1 && echo PASS || echo FAIL`): the gate feeds check context back into the loop every turn, and raw dumps poison it. A flawed or noisy signal gets faithfully optimized — the loop is only as honest as what the check prints.
 

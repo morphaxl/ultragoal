@@ -4,7 +4,7 @@
      bodies here. Its head is injected into every session — keep it under 100 lines. -->
 
 ## Commands
-- test (gate engine): `bash tests/gate-test.sh` — 47 cases, must exit 0
+- test (gate engine): `bash tests/gate-test.sh` — 52 cases, must exit 0
 - validate plugin: `claude plugin validate .`
 - smoke-test loading: `claude --plugin-dir . -p "list ultragoal skills" --allowedTools ""` from another cwd
 - installer sandbox test: temp git repo + `node <repo>/installer/cli.mjs --yes`
@@ -18,7 +18,7 @@
 - When adding a knob, grep user-facing copy for hardcoded counts ("4 questions")
 - gitignore patterns without leading `/` match at any depth — `git check-ignore` new doc dirs (shadowed docs/research/ once)
 - rubric count-checks that grep the goal file self-match the rubric's own text — scope to the section (verifier-appended verdict tables at file end self-match too)
-- flipping the VERIFIER rubric box changes the rubric hash and voids the verdict — flip the box first, then have the verifier re-sign the final hash
+- rubric hash binds to check text only (v1.1.0+): box flips and evidence lines never void a verdict; editing a check always does. Scoped interim checks write ULTRAGOAL-INTERIM lines, which the gate ignores
 - research-scout prompts on Fable 5: keep an explicit software-engineering-register line, or classifier triggers can switch the session model mid-run
 
 ## Hot files

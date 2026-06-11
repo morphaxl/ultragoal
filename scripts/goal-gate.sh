@@ -82,7 +82,10 @@ verify="$(read_field "$GOAL" verify)"; [ "$verify" = "off" ] || verify="on"
 
 # ---- rubric integrity (hash frozen at arm; change invalidates verdicts) -----
 hash_file="$GDIR/.rubric-hash"
-rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
+# The hash binds verdicts to the CHECKS, not to progress: checkbox state and
+# evidence lines are normalized out, so marking items done never voids a verdict —
+# editing what a check says or measures still does.
+rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | sed -e 's/^\( *- \)\[[xX ]\]/\1[ ]/' -e '/^ *- evidence:/d' 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
 integrity_note=""
 if [ -n "$rubric_hash" ]; then
   if [ -r "$hash_file" ]; then

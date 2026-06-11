@@ -64,7 +64,7 @@ run_gate() { # [session_id] -> sets RC, ERR
   RC=$?
 }
 
-rubric_hash() { awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | cksum | cut -d' ' -f1; }
+rubric_hash() { awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | sed -e 's/^\( *- \)\[[xX ]\]/\1[ ]/' -e '/^ *- evidence:/d' | cksum | cut -d' ' -f1; }
 check_all_boxes() { tmp="$GOAL.t"; sed 's/- \[ \]/- [x]/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; }
 
 echo "goal-gate.sh"
@@ -124,6 +124,24 @@ check "later FAIL beats older PASS" 2 "$RC" "no valid verification" "$ERR"
 fresh; goalfile active; check_all_boxes; run_gate
 printf '\nULTRAGOAL-VERIFIED: PASS rubric=999999\n' >> "$GOAL"; run_gate
 check "PASS with stale rubric hash -> block" 2 "$RC" "no valid verification" "$ERR"
+
+# hash normalization: progress marks never void a verdict; check-text edits do
+fresh; goalfile active; run_gate
+H="$(rubric_hash)"
+printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s\n' "$H" >> "$GOAL"
+check_all_boxes; run_gate
+check "box flips don't void the verdict -> distill" 2 "$RC" "Distill" "$ERR"
+grep -q "Rubric section changed" "$ERR" && check "box flips don't fire integrity note" 0 1 || check "box flips don't fire integrity note" 0 0
+awk '{print} /- \[x\]/ {print "  - evidence: \`true\` -> ok"}' "$GOAL" > "$GOAL.t" && mv "$GOAL.t" "$GOAL"; run_gate
+check "evidence lines don't void the verdict" 2 "$RC" "Distill" "$ERR"
+printf 'ULTRAGOAL-INTERIM: PASS items 1-2 rubric=%s\n' "$H" >> "$GOAL"; run_gate
+check "interim lines don't disturb release" 2 "$RC" "Distill" "$ERR"
+tmp="$GOAL.t"; sed 's/item one/item one WEAKENED/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; run_gate
+check "check-text edit voids the verdict" 2 "$RC" "no valid verification" "$ERR"
+
+fresh; goalfile active; check_all_boxes; run_gate
+printf '\nULTRAGOAL-INTERIM: PASS items 1-2 rubric=%s\n' "$(rubric_hash)" >> "$GOAL"; run_gate
+check "interim-only verdict does not release" 2 "$RC" "no valid verification" "$ERR"
 
 fresh; goalfile active; run_gate
 tmp="$GOAL.t"; sed 's/item one/item ONE CHANGED/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; run_gate

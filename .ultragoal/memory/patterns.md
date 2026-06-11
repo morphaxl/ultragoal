@@ -15,7 +15,7 @@
 
 - Keeping research-scout prompts in orchestration/reliability vocabulary (an explicit "stay in software-engineering register" line in each prompt) avoids classifier-driven model switches on Fable 5: 4 scouts in the orchestration sweep ran clean, where the robustness goal's security-register scout triggered a mid-run switch. [VERIFIED S7 · multiagent-orchestration goal, 4/4 scouts completed on-model · 2026-06-11]
 
-- Final sign-off sequencing: flip the VERIFIER rubric box (with evidence) BEFORE the last verifier dispatch — the box flip changes the rubric hash and voids any verdict issued first. Sequence that works: verify all items → check boxes → flip VERIFIER box → one final verifier pass signs the final hash. [VERIFIED S7 · first verdict (rubric=1271038965) voided by the flip; re-sign (rubric=1351950032) released the gate · 2026-06-11]
+- (RESOLVED in v1.1.0) The old final-sign-off dance — box flips voiding fresh verdicts, forcing a second verifier dispatch per goal — is engineered away: the rubric hash now normalizes out checkbox state and evidence lines, binding verdicts to check text only. One verifier pass at the end suffices; editing a check still voids. [VERIFIED S7 · 6 new gate tests cover both directions · 2026-06-12]
 
 - Transcript decomposition beats live A/B for cost analysis: finished agent runs leave full per-message usage in ~/.claude/projects/<cwd-slug>/*.jsonl (+ subagents/) — summing usage fields located the harness's cost structure (messages × context, ceremony prose, verifier share) in one free pass, where each live bench measurement costs ~1.2M tokens/run. Decompose first; measure only what judgment can't settle. [VERIFIED S7 · smoke-run decomposition drove the cost findings · 2026-06-11]
 
