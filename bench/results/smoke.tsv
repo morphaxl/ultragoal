@@ -1,0 +1,2 @@
+task	arm	passes	checks	turns	tokens	model	harness_commit
+csv-stats	vanilla	9	9	6	106602	claude-fable-5	e36367e

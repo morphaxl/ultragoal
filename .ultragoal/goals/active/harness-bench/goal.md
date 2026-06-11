@@ -22,9 +22,12 @@ Build ultragoal's self-measurement instrument and record the first baseline: a b
 - Risk concentration: headless `claude -p` + plugin-dir + non-interactive goal-skill flow inside a sandbox is the integration that may need debugging turns; smoke-test before the 18-run baseline.
 
 # Rubric
-- [ ] Harness pinned: pending work committed; harness surface has no uncommitted diff — check: `git diff --stat HEAD -- scripts skills agents installer hooks` empty and `git status --porcelain -- scripts skills agents installer hooks` empty
-- [ ] Methodology memo exists with ≥10 distinct primary-source links — check: `grep -oE 'https?://[^ )]+' docs/research/harness-eval-2026-06.md | sort -u | wc -l` ≥ 10
-- [ ] 3 seeded tasks exist, each with setup, brief, and standalone end-state check that fails on the freshly seeded repo — check: `node bench/run.mjs --selftest` exits 0 and prints one PASS line per task
+- [x] Harness pinned: pending work committed; harness surface has no uncommitted diff — check: `git diff --stat HEAD -- scripts skills agents installer hooks` empty and `git status --porcelain -- scripts skills agents installer hooks` empty
+  - evidence: both commands empty at HEAD e36367e; verifier confirmed (Verification log, items 1–3 PASS)
+- [x] Methodology memo exists with ≥10 distinct primary-source links — check: `grep -oE 'https?://[^ )]+' docs/research/harness-eval-2026-06.md | sort -u | wc -l` ≥ 10
+  - evidence: grep -> 21 distinct URLs; verifier confirmed 21 ≥ 10
+- [x] 3 seeded tasks exist, each with setup, brief, and standalone end-state check that fails on the freshly seeded repo — check: `node bench/run.mjs --selftest` exits 0 and prints one PASS line per task
+  - evidence: `node bench/run.mjs --selftest` -> exit 0; csv-stats 2/9→9/9, slugify 3/12→12/12, todo-json 4/7→7/7; verifier re-ran and confirmed
 - [ ] Runner completes a paired smoke run and emits complete rows — check: smoke results TSV has header `task	arm	passes	checks	turns	tokens	model	harness_commit` and ≥2 data rows
 - [ ] Baseline complete: 18 runs recorded — check: `awk 'NR>1' bench/results/baseline.tsv | wc -l` = 18 with all 3 tasks × both arms × 3 reps present
 - [ ] bench/BASELINE.md summarizes per-task pass rate, turns, and tokens for both arms with spread, and records the pinned harness commit + model — check: file has the summary table and a hash that `git cat-file -t` confirms is a commit
@@ -48,6 +51,24 @@ Build ultragoal's self-measurement instrument and record the first baseline: a b
 
 # Decision journal
 - 2026-06-11 owner ratified: instrument+baseline scope, 18-run starter scale, pin-first commit, budget 40.
+- 2026-06-11 rejected: `--bare` flag for arm isolation — it refuses OAuth/keychain auth and this machine has no ANTHROPIC_API_KEY; vanilla arm instead = stock environment with no .ultragoal in the sandbox (installed plugin hooks are no-ops there), definition recorded in the memo.
+- 2026-06-11 rejected: `--max-turns` run cap — flag doesn't exist in this CLI version; per-run wall-clock timeout (25 min, SIGKILL) + the ultragoal arm's own goal budget serve instead.
+- 2026-06-11 rejected: shipping graders inside the seeded sandboxes — agents could read or game them (StrongDM lesson); check.sh lives in bench/tasks/ and runs against the sandbox from outside.
+- 2026-06-11 rejected: rows for infrastructure failures — a crashed/unparseable run writes NO row and is re-run via single-run mode, keeping baseline.tsv a record of completed measurements only.
 
 # Native fallback
 /goal all rubric items in .ultragoal/goals/active/harness-bench/goal.md are checked with evidence and the verification log ends with ULTRAGOAL-VERIFIED: PASS, or stop after 40 turns
+
+## Verification — 2026-06-11
+Scope: interim verification of rubric items 1–3 only (items 4–10 not claimed, not graded). Goal remains incomplete.
+| Rubric item | Command run | Result | Verdict |
+|---|---|---|---|
+| 1. Harness pinned | `git diff --stat HEAD -- scripts skills agents installer hooks` and `git status --porcelain -- scripts skills agents installer hooks` | both empty, exit 0; HEAD = e36367e (claimed pin commit) | PASS — harness surface clean at pin commit |
+| 2. Methodology memo ≥10 links | `grep -oE 'https?://[^ )]+' docs/research/harness-eval-2026-06.md \| sort -u \| wc -l` | 21 distinct URLs (20 primary; one explicitly tagged secondary); memo is substantive, not a link dump | PASS — 21 ≥ 10 |
+| 3. Selftest | `node bench/run.mjs --selftest` | exit 0; `SELFTEST csv-stats PASS (seed 2/9 fails, reference 9/9 passes)`, `SELFTEST slugify PASS (seed 3/12 fails, reference 12/12 passes)`, `SELFTEST todo-json PASS (seed 4/7 fails, reference 7/7 passes)` — one PASS line per task, all 3 fail-on-seed/pass-on-reference | PASS |
+| Constraint: arm-neutral bench | read bench/run.mjs + all bench/tasks/*/check.sh; `grep -rinE 'ultragoal\|vanilla\|plugin\|claude\|arm' bench/tasks/` | no arm references in any task definition; identical brief/sandbox/grader per task, arms differ only in claudeArgs invocation per documented protocol | no violation |
+| Constraint: engine unchanged | `git diff e36367e(HEAD) -- scripts skills agents hooks installer` | empty | no violation |
+
+Note: bench/, docs/research/harness-eval-2026-06.md, and goal logs are currently untracked (outside the pinned harness surface — permitted; flagging for later items that reference the harness commit from results rows).
+
+ULTRAGOAL-VERIFIED: PASS rubric=1613333547
