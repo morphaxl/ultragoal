@@ -1,6 +1,6 @@
 # bench — ultragoal's self-measurement instrument
 
-Measures the ultragoal harness against vanilla Claude Code on seeded tasks, graded by identical scripted end-state checks. Methodology and sources: [docs/research/harness-eval-2026-06.md](../docs/research/harness-eval-2026-06.md). Baseline results: [BASELINE.md](BASELINE.md).
+Measures the ultragoal harness against vanilla Claude Code on seeded tasks, graded by identical scripted end-state checks. Methodology and sources: [docs/research/harness-eval-2026-06.md](../docs/research/harness-eval-2026-06.md). A full baseline has not been recorded yet (the owner deprioritized measured self-experiments — partial honest data lives in `results/`); when one is run, summarize it in a `BASELINE.md` here per the reporting rules below.
 
 ## Re-run the baseline
 
