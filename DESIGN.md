@@ -251,4 +251,4 @@ Deliberately not borrowed: autoresearch's never-stop-unbounded loop (our budgets
 
 ## 8. Roadmap
 
-npx shim → community-marketplace submission → output styles shipping the readability/prose blocks → scheduled "dreaming" (cloud routine that runs the lint/compact pass overnight, mirroring both CMA's dreaming feature and gbrain's nightly consolidation crons) → optional Outcomes/Managed-Agents bridge for hours-long cloud runs.
+npx shim → community-marketplace submission → output styles shipping the readability/prose blocks → scheduled "dreaming" (cloud routine that runs the lint/compact pass overnight, mirroring both CMA's dreaming feature and gbrain's nightly consolidation crons) → scheduled discovery/triage (the loop that *finds* the work, not just finishes it: a cron automation reads CI failures, open issues, and recent commits, then writes candidate goal briefs into a queue for the user to ratify — runs that find nothing self-archive silently) → optional Outcomes/Managed-Agents bridge for hours-long cloud runs.

@@ -104,6 +104,7 @@ fresh; goalfile active; check_all_boxes; run_gate  # seed hash file
 H="$(rubric_hash)"
 printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s\n' "$H" >> "$GOAL"; run_gate
 check "valid current PASS -> distill step" 2 "$RC" "Distill" "$ERR"
+grep -q "worth reading" "$ERR" && check "release report names diffs worth reading" 0 0 || check "release report names diffs worth reading" 0 1
 
 printf 'ULTRAGOAL-VERIFIED: FAIL rubric=%s — broke\n' "$H" >> "$GOAL"; run_gate
 check "later FAIL beats older PASS" 2 "$RC" "no valid verification" "$ERR"
@@ -148,6 +149,24 @@ printf '# x\n---\n## Evidence log\n[2026-01-01 S1] old\n' > "$UG/memory/facts.md
 ( cd "$T" && git init -q && git -c user.name=t -c user.email=t@t commit -q --allow-empty -m a && for i in $(seq 1 25); do git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "c$i"; done )
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"
 echo "$OUT" | grep -q "Staleness warning" && check "ctx: staleness warning" 0 0 || check "ctx: staleness warning" 0 1
+
+echo "skill preamble lint"
+
+# Every dynamic !-command in a skill must exit 0 in bash AND zsh on an empty repo —
+# zsh aborts the whole command list on an unmatched glob, where bash falls through.
+PT="$(mktemp -d)"; export CLAUDE_PROJECT_DIR="$PT"
+pre_ok=1
+for sk in "$HERE"/skills/*/SKILL.md; do
+  cmds="$(awk '/^```!$/{f=1; next} /^```/{f=0} f' "$sk"; grep -o '!`[^`]*`' "$sk" 2>/dev/null | sed 's/^!`//; s/`$//')"
+  [ -n "$(printf '%s' "$cmds" | tr -d '[:space:]')" ] || continue
+  for shbin in bash zsh; do
+    command -v "$shbin" >/dev/null 2>&1 || continue
+    if ! printf '%s\n' "$cmds" | "$shbin" -e -s >/dev/null 2>&1; then
+      echo "    preamble: $(basename "$(dirname "$sk")")/SKILL.md fails under $shbin"; pre_ok=0
+    fi
+  done
+done
+[ "$pre_ok" = 1 ] && check "skill !-preambles exit 0 in bash and zsh (empty repo)" 0 0 || check "skill !-preambles exit 0 in bash and zsh (empty repo)" 0 1
 
 echo "rubric library lint"
 

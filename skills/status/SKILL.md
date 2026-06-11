@@ -7,7 +7,7 @@ Report the current ultragoal state for this project. Current data:
 
 Active goals (one directory per goal; each shows its bound session):
 ```!
-for g in "${CLAUDE_PROJECT_DIR:-.}"/.ultragoal/goals/active/*/goal.md "${CLAUDE_PROJECT_DIR:-.}"/.ultragoal/goals/active.md; do [ -r "$g" ] || continue; echo "── $g"; grep -E '^(slug|status|kind|session|budget):' "$g"; t="$(dirname "$g")/.turns"; echo "turns: $(cat "$t" 2>/dev/null || echo 0)"; done 2>/dev/null || echo "(no active goals)"
+out="$({ find "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/active" -maxdepth 2 -name goal.md 2>/dev/null; ls "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/active.md" 2>/dev/null; } | while read -r g; do echo "── $g"; grep -E '^(slug|status|kind|session|budget):' "$g"; t="$(dirname "$g")/.turns"; echo "turns: $(cat "$t" 2>/dev/null || echo 0)"; done)"; printf '%s\n' "${out:-(no active goals)}"
 ```
 
 Sessions since last memory compaction: !`cat "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/memory/.sessions" 2>/dev/null || echo 0` · Archived goals: !`ls "${CLAUDE_PROJECT_DIR:-.}/.ultragoal/goals/archive/" 2>/dev/null | wc -l | tr -d ' '`

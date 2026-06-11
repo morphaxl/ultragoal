@@ -158,6 +158,6 @@ ULTRAGOAL GATE — rubric complete and independently verified. Final steps befor
 1. Distill lessons into .ultragoal/memory/ (use the ultragoal:remember skill): verified facts, patterns that worked, dead ends to avoid — with provenance tags and evidence.
 2. Append a row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing): today's date, "$slug", "$kind", "done", turns used ($turns), the count of FAIL verdicts in the goal file, and $budget.
 3. Move $GOAL to .ultragoal/goals/archive/$slug.md (set "status: done" in it) and remove $GDIR.
-4. Then report the outcome to the user. You have been working without them watching — your final message is their first look at any of it. Write it as a re-grounding: the outcome first, evidence for each rubric item, then the one or two things you need from them, each explained as if new. Leave behind the vocabulary you built up while working unless you re-introduce it.
+4. Then report the outcome to the user. You have been working without them watching — your final message is their first look at any of it. Write it as a re-grounding: the outcome first, evidence for each rubric item, the two or three diffs most worth reading with their own eyes (verification proves the work passes; reading is how they keep understanding it), then the one or two things you need from them, each explained as if new. Leave behind the vocabulary you built up while working unless you re-introduce it.
 EOF
 exit 2

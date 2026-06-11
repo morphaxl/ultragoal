@@ -28,6 +28,8 @@ Before asking the user anything:
 
 Goals are per-session: each lives in `.ultragoal/goals/active/<slug>/goal.md` with a `session:` field, and the gate enforces only the goal armed by the current session. So a goal active in *another* session does **not** block you — arm a new one freely; concurrent goals across sessions are the intended model. Only if **this same session** already has an active goal do you ask the user to pick: keep the current one (drop this brief), or replace it (pause/abandon per the `ultragoal:stop` protocol, then arm this).
 
+One caution: sessions share the working tree. If another session's active goal touches files this goal will also touch — and any `kind: experiment` goal touches everything, since it commits and resets constantly — warn the user before arming and suggest running one of the goals in its own checkout instead (`claude --worktree`, or `npx ultragoal run --worktree`). The gate keeps the *loops* from interfering; only a worktree keeps the *files* from interfering.
+
 ## Phase 2 — Interview for the decisions that steer the outcome
 
 Ask **high-leverage questions only** — the forks where different answers produce materially different work. A question earns its place when all three hold: (1) the answer changes what you build, not just cosmetics; (2) you genuinely can't pick it confidently from the brief, repo, and memory; (3) guessing wrong is expensive (rework, wasted budget, wrong direction). If a question fails any of these, don't ask it — answer it yourself from the codebase, or take the obvious default and note it.

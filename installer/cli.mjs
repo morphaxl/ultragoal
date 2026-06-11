@@ -57,6 +57,8 @@ if (flag('--help') || flag('-h')) {
                                full-autonomy goal run: launches Claude Code with the goal
                                armed and --dangerously-skip-permissions (no prompts at all)
         --safe                 auto mode instead: tools auto-approved, guardrails stay on
+        --worktree             run in a fresh git worktree — isolated checkout, so
+                               parallel goals on one repo can't collide
         --headless             non-interactive: runs the loop to completion and exits
     npx ultragoal update       update to the latest version
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
@@ -77,6 +79,7 @@ if (args[0] === 'run') {
   const rest = args.slice(1);
   const safe = rest.includes('--safe');
   const headless = rest.includes('--headless');
+  const worktree = rest.includes('--worktree');
   const brief = rest.filter((a) => !a.startsWith('--')).join(' ').trim();
   banner();
   p.intro(pc.bgGreen(pc.black(' ultragoal autopilot ')));
@@ -98,10 +101,11 @@ if (args[0] === 'run') {
   if (safe) {
     p.log.info('Safe mode: tool calls auto-approved within each turn, permission guardrails stay on.');
   } else {
-    p.log.warn('Full autonomy (the default): --dangerously-skip-permissions — Claude can run any command without asking until the goal is done. Best in a repo you can reset or a container; add --safe to keep permission guardrails.');
+    p.log.warn('Full autonomy (the default): --dangerously-skip-permissions — Claude can run any command without asking until the goal is done. Best in a repo you can reset or a container; add --safe to keep permission guardrails, --worktree for an isolated checkout.');
   }
+  if (worktree) p.log.info('Worktree: the goal runs in a fresh checkout on its own branch — merge it when the goal is done.');
   p.outro(headless ? 'Running the goal loop headless — output follows.' : 'Handing you over to Claude Code with the goal armed.');
-  const launch = spawnSync('claude', [...mode, ...(headless ? ['-p'] : []), `/ultragoal:goal ${brief}`], {
+  const launch = spawnSync('claude', [...mode, ...(worktree ? ['--worktree'] : []), ...(headless ? ['-p'] : []), `/ultragoal:goal ${brief}`], {
     stdio: 'inherit',
   });
   process.exit(launch.status ?? 0);
