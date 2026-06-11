@@ -210,6 +210,24 @@ printf '{"session_id":"me"}' | HOME="$T/home" PATH="$T/bin:$PATH" "$CTX" >/dev/n
 sleep 1
 [ ! -e "$T/home/claude-calls.log" ] && check "ctx: fresh stamp throttles repeat updates" 0 0 || check "ctx: fresh stamp throttles repeat updates" 0 1
 
+echo "arm-guard.sh"
+
+GUARD="$HERE/scripts/arm-guard.sh"
+fresh
+arm_q='{"tool_name":"AskUserQuestion","tool_input":{"questions":[{"header":"Arm goal","question":"Arm this goal and start?"}]}}'
+bundle_q='{"tool_name":"AskUserQuestion","tool_input":{"questions":[{"header":"Approach","question":"A or B?"},{"header":"Arm goal","question":"Arm?"}]}}'
+other_q='{"tool_name":"AskUserQuestion","tool_input":{"questions":[{"header":"Approach","question":"A or B?"}]}}'
+printf '%s' "$other_q" | "$GUARD" 2>"$T/g.err"; check "guard: non-arm question passes" 0 $?
+printf '%s' "$arm_q" | "$GUARD" 2>"$T/g.err"; RC=$?
+check "guard: arm without draft -> block" 2 "$RC" "no draft spec" "$T/g.err"
+printf '%s' "$bundle_q" | "$GUARD" 2>"$T/g.err"; RC=$?
+check "guard: bundled arm question -> block" 2 "$RC" "stand alone" "$T/g.err"
+write_goal "$UG/goals/active/d/goal.md" draft task 25 "" on d
+printf '%s' "$arm_q" | "$GUARD" 2>"$T/g.err"; check "guard: arm with draft -> pass" 0 $?
+printf 'not json at all' | "$GUARD" 2>/dev/null; check "guard: garbage stdin fails open" 0 $?
+rm -rf "$UG"
+printf '%s' "$arm_q" | "$GUARD" 2>/dev/null; check "guard: no .ultragoal fails open" 0 $?
+
 echo "skill preamble lint"
 
 # Every dynamic !-command in a skill must exit 0 in bash AND zsh on an empty repo —

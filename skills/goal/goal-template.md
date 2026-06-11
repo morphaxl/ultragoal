@@ -5,7 +5,7 @@ Write the spec to `.ultragoal/goals/active/<slug>/goal.md` exactly in this shape
 ```markdown
 ---
 slug: <kebab-case-short-name>
-status: active
+status: active                 # written as "draft" until the user arms it; the gate ignores drafts
 kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
 budget: <max turns — default from .ultragoal/config.md, usually 25>
 session: <the arming session's ID — the gate enforces only this session's goal; another session can take it over by rewriting this field>

@@ -9,8 +9,8 @@ This repo is the **ultragoal** Claude Code plugin (goal loops: rubric-gated auto
 skills/           the skills: goal, status, stop, remember, compact, setup, verify
   goal/           flagship; supporting files: rubric-guide, experiment-guide, goal-template, rubrics/ (the rubric library)
 agents/           verifier.md — the fresh-context verifier subagent
-hooks/hooks.json  Stop → goal-gate.sh; SessionStart → session-context.sh
-scripts/          goal-gate.sh (the loop engine) + session-context.sh — POSIX shell, fail-open/fail-quiet
+hooks/hooks.json  Stop → goal-gate.sh; SessionStart → session-context.sh; PreToolUse(AskUserQuestion) → arm-guard.sh
+scripts/          goal-gate.sh (the loop engine) + session-context.sh + arm-guard.sh — POSIX shell, fail-open/fail-quiet
 installer/cli.mjs the npx installer (clack TUI); the ONLY file shipped to npm
 tests/gate-test.sh  the engine regression suite (run in CI)
 ```

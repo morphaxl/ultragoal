@@ -73,7 +73,9 @@ For goals that earned a deep interview, draft the rubric at two or three contrac
 
 ## Phase 4 — Recap, confirm, and arm
 
-Before any building, give the user a tight, skimmable recap so they can course-correct while it's still cheap. Five short parts, in plain language:
+**First, write the finished spec as a draft**: create `.ultragoal/goals/active/<slug>/` and write the spec to `goal.md` inside it with `status: draft` in the frontmatter (if that directory already exists for a different session, add a short suffix to the slug). A draft is inert — the gate ignores it. This ordering is enforced, not advisory: a guard hook blocks the arm question if no draft exists, because the recap must be read back from a real artifact, not improvised.
+
+Then give the user a tight, skimmable recap built from that draft, so they can course-correct while it's still cheap. Five short parts, in plain language:
 
 1. **What I understood you want** — one or two sentences restating the goal in your words (proof you got it right).
 2. **Key decisions** — the forks from the interview and which way each went, including the calls you made yourself (so a wrong assumption surfaces now, not after 15 turns).
@@ -81,13 +83,15 @@ Before any building, give the user a tight, skimmable recap so they can course-c
 4. **What it will take** — rough, human terms, in units the loop actually counts: the turn budget and how many subagent fan-outs you expect (scouts, verifier passes) — e.g. "up to 30 turns and roughly a dozen subagent dispatches; a long unattended run". Never estimate wall-clock time — agents are reliably bad at it, and a blown time estimate costs more trust than an honest "long". And never trim the plan to make the scale look smaller — the user is buying the result; this line exists so the scale never surprises them.
 5. **How we'll know it's done** — the rubric in brief (the checkable end state and the stop conditions/budget).
 
-Then ask for a yes / edits — the recap and the arm question go in the **same message**, recap first. Never ask "arm and start?" before the spec is drafted: if the five parts above aren't written yet, write them before asking. This holds for every goal, including follow-up rounds in a session that has already run goals — earlier rounds never waive the recap, because each round's decisions and rubric are new. Keep it scannable — this is a confirmation, not the full spec dump; the spec file holds the detail.
+Then ask to arm with a **standalone** `AskUserQuestion` — exactly one question, header exactly `Arm goal`, options "Yes, arm it" / "Edits first" — in the **same message** as the recap, recap first. Never bundle the arm question into an interview batch (the guard hook blocks that too), and never ask it before the draft exists. This holds for every goal, including follow-up rounds in a session that has already run goals — earlier rounds never waive the recap, because each round's decisions and rubric are new. Keep the recap scannable — it's a confirmation, not the full spec dump; the draft file holds the detail.
 
 On yes:
 
-1. Create `.ultragoal/goals/active/<slug>/` and write the spec to `goal.md` inside it (if that directory already exists for a different session, add a short suffix to the slug). Frontmatter: `status: active`, `session: ${CLAUDE_SESSION_ID}` (the gate enforces only this session's goal), and `verify:` copied from the `verification` knob in `.ultragoal/config.md` (default on; off means the gate accepts a fully checked rubric without the verifier pass).
+1. Flip the draft's `status: draft` to `status: active`. The frontmatter already carries `session: ${CLAUDE_SESSION_ID}` (the gate enforces only this session's goal) and `verify:` from the `verification` knob in `.ultragoal/config.md` (default on; off means the gate accepts a fully checked rubric without the verifier pass).
 2. Write `0` to `.ultragoal/goals/active/<slug>/.turns`. (Experiment goals keep their `results.tsv` in this same directory, beside `goal.md`.)
 3. Tell the user the loop is armed: the Stop gate will keep the session working until the rubric is independently verified and lessons are distilled — and how to bail out (`/ultragoal:stop`, or the turn budget).
+
+On "Edits first": revise the draft and re-recap. If the goal is dropped entirely, delete the draft directory — never leave orphan drafts.
 
 Then **begin working immediately**. Do not end the turn with a plan.
 
