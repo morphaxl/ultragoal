@@ -54,7 +54,9 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal --yes        non-interactive: project-scope install, no prompts
     npx ultragoal --project    install at project scope (the default; team-shared via git)
     npx ultragoal --global     install machine-wide (user scope) instead
-    npx ultragoal --setup      also pre-configure the current repo (with --yes: defaults)
+    npx ultragoal --setup      pre-configure the current repo (with --yes: defaults);
+                               on an already-configured repo: reconfigure the knobs
+                               (memory, goals, and hand-tuned rows are preserved)
     npx ultragoal run "<brief>"
                                full-autonomy goal run: launches Claude Code with the goal
                                armed and --dangerously-skip-permissions (no prompts at all)
@@ -364,11 +366,33 @@ const MEMORY_FILES = {
 `,
 };
 
+function readKnobs(root) {
+  // current knob values from an existing config.md (empty object if none)
+  try {
+    const t = readFileSync(join(root, '.ultragoal', 'config.md'), 'utf8');
+    const g = (k) => ((t.match(new RegExp(`\\|\\s*${k}\\s*\\|\\s*([^|\\n]+)\\|`)) || [])[1] || '').trim() || undefined;
+    return {
+      action: g('action-mode'),
+      communication: g('communication'),
+      scope: g('scope'),
+      memory: g('memory-sharing'),
+      verification: g('verification'),
+      budget: g('default-budget'),
+      cadence: g('verification-cadence'),
+      interview: g('interview-depth'),
+    };
+  } catch {
+    return {};
+  }
+}
+
 function writeRepoSetup(root, picks) {
   const ug = join(root, '.ultragoal');
   mkdirSync(join(ug, 'goals', 'archive'), { recursive: true });
   mkdirSync(join(ug, 'memory'), { recursive: true });
 
+  // hand-tuned rows survive a reconfigure
+  const prev = readKnobs(root);
   writeFileSync(
     join(ug, 'config.md'),
     `# ultragoal config
@@ -382,9 +406,9 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | scope | ${picks.scope} |
 | memory-sharing | ${picks.memory} |
 | verification | ${picks.verification} |
-| default-budget | 25 |
-| verification-cadence | every-claim |
-| interview-depth | adaptive |
+| default-budget | ${prev.budget || '25'} |
+| verification-cadence | ${prev.cadence || 'every-claim'} |
+| interview-depth | ${prev.interview || 'adaptive'} |
 `
   );
 
@@ -398,7 +422,12 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
   const gi = join(root, '.gitignore');
   const wanted = ['.ultragoal/goals/active/*/.turns', '.ultragoal/goals/active/*/.rubric-hash', '.ultragoal/memory/.sessions'];
   if (picks.memory === 'local') wanted.push('.ultragoal/memory/');
-  const existing = existsSync(gi) ? readFileSync(gi, 'utf8') : '';
+  let existing = existsSync(gi) ? readFileSync(gi, 'utf8') : '';
+  if (picks.memory === 'git' && /^\.ultragoal\/memory\/\s*$/m.test(existing)) {
+    // switched local -> git: stop ignoring the memory so it can be committed
+    existing = existing.split('\n').filter((l) => l.trim() !== '.ultragoal/memory/').join('\n');
+    writeFileSync(gi, existing);
+  }
   const missing = wanted.filter((l) => !existing.includes(l));
   if (missing.length) appendFileSync(gi, `\n# ultragoal local state\n${missing.join('\n')}\n`);
 
@@ -480,23 +509,47 @@ if (interactive && !alreadySetup && !wantSetup) {
   wantSetup = yn;
 }
 
-if (wantSetup && !alreadySetup) {
-  const picks = { action: 'proactive', communication: 'lead-with-outcome', scope: 'elaborate-ok', memory: 'git', verification: 'on' };
+// On an already-configured repo, --setup (or an interactive yes) reconfigures:
+// knobs and the CLAUDE.md block are rewritten; memory, goals, and hand-tuned
+// config rows (budget, cadence, interview depth) are preserved.
+let wantReconfig = alreadySetup && wantSetup;
+if (interactive && alreadySetup && !wantReconfig) {
+  const yn = await p.confirm({
+    message: 'This repo is already configured — reconfigure its working style? (rewrites knobs + CLAUDE.md block; memory and goals untouched)',
+    initialValue: false,
+  });
+  if (p.isCancel(yn)) bail('Cancelled.');
+  wantReconfig = yn;
+}
+
+if ((wantSetup && !alreadySetup) || wantReconfig) {
+  const current = readKnobs(root);
+  const picks = {
+    action: current.action || 'proactive',
+    communication: current.communication || 'lead-with-outcome',
+    scope: current.scope || 'elaborate-ok',
+    memory: current.memory || 'git',
+    verification: current.verification || 'on',
+  };
   if (interactive) {
     for (const key of ['action', 'communication', 'scope', 'memory', 'verification']) {
-      const v = await p.select({ message: KNOBS[key].question, options: KNOBS[key].options });
+      const v = await p.select({ message: KNOBS[key].question, options: KNOBS[key].options, initialValue: picks[key] });
       if (p.isCancel(v)) bail('Cancelled.');
       picks[key] = v;
     }
   }
   writeRepoSetup(root, picks);
   didSetup = true;
-  p.note(
-    `.ultragoal/config.md      your knobs (hand-editable)\n.ultragoal/memory/        two-layer memory, ready to grow\nCLAUDE.md                  ultragoal block ${pc.dim('(marked, easy to remove)')}`,
-    'Created in this repo'
-  );
+  if (wantReconfig) {
+    p.log.success('Reconfigured: config.md knobs and the CLAUDE.md block updated; memory, goals, and hand-tuned rows untouched.');
+  } else {
+    p.note(
+      `.ultragoal/config.md      your knobs (hand-editable)\n.ultragoal/memory/        two-layer memory, ready to grow\nCLAUDE.md                  ultragoal block ${pc.dim('(marked, easy to remove)')}`,
+      'Created in this repo'
+    );
+  }
 } else if (alreadySetup) {
-  p.log.info('This repo already has .ultragoal/ — leaving it untouched.');
+  p.log.info('This repo already has .ultragoal/ — leaving it untouched. Reconfigure anytime: npx ultragoal --setup, or /ultragoal:setup in a session.');
 }
 
 p.outro(
