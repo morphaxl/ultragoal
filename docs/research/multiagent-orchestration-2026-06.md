@@ -70,6 +70,8 @@ Leverage = (impact on feedback-signal/context quality × cross-community converg
 
 ## Implemented
 
+> Status update, 2026-06-11 (later the same day): the owner redirected toward the vanilla single-grader architecture of the founding article. Panel verification was removed from the engine in v0.14.0 — the gate accepts one verdict grammar again — and the aspect-lens idea survives as optional dispatch guidance in the goal skill (extra verifier passes with distinct lenses; the gate still needs only the final PASS). The evidence below stands; the engine grammar does not.
+
 1. **Panel verification (`verify: panel`)** — `scripts/goal-gate.sh` (third `verify` value; release requires the last verdict *per lens* to be `ULTRAGOAL-VERIFIED: PASS rubric=<current-hash> lens=<checks|refute|constraints>` for all three lenses; fail-open preserved), `tests/gate-test.sh` (6 new cases: panel protocol surfaced, full panel releases, partial panel blocks naming the missing lens, un-lensed PASS blocks, later lens FAIL beats its older PASS, stale-hash lenses block), `agents/verifier.md` (panel-lens protocol + verdict format + blindness rule), `skills/goal/goal-template.md` + `skills/goal/SKILL.md` (the `verify: panel` contract and parallel-dispatch protocol), `skills/setup/SKILL.md` + `installer/cli.mjs` (verification knob gains `panel`), `docs/research-foundations.md` (evidence rows).
 2. **Fan-out sizing rules** — `skills/goal/SKILL.md` "Match the machinery to the goal" section: research-backed sizing guidance for scout/subagent fan-out.
 
