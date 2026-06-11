@@ -191,6 +191,25 @@ rm -f "$UG/memory/facts.md"; printf '11' > "$UG/memory/.sessions"
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"
 echo "$OUT" | grep -q "no evidence entries yet" && check "ctx: remember nudge when memory empty" 0 0 || check "ctx: remember nudge when memory empty" 0 1
 
+# auto-update: spawns a throttled background update via the claude CLI; the off
+# knob and a fresh stamp both suppress it. A fake claude shim records calls.
+fresh
+mkdir -p "$T/bin" "$T/home"
+printf '#!/bin/sh\necho "$*" >> "$HOME/claude-calls.log"\n' > "$T/bin/claude" && chmod +x "$T/bin/claude"
+printf '| auto-update | off |\n' > "$UG/config.md"
+printf '{"session_id":"me"}' | HOME="$T/home" PATH="$T/bin:$PATH" "$CTX" >/dev/null
+sleep 1
+[ ! -e "$T/home/claude-calls.log" ] && check "ctx: auto-update off -> nothing spawned" 0 0 || check "ctx: auto-update off -> nothing spawned" 0 1
+printf '| auto-update | on |\n' > "$UG/config.md"
+printf '{"session_id":"me"}' | HOME="$T/home" PATH="$T/bin:$PATH" "$CTX" >/dev/null
+sleep 1
+grep -q 'plugin update ultragoal@ultragoal --scope project' "$T/home/claude-calls.log" 2>/dev/null && check "ctx: auto-update on -> project pin update spawned" 0 0 || check "ctx: auto-update on -> project pin update spawned" 0 1
+[ -e "$T/home/.claude/ultragoal-update-stamp" ] && check "ctx: auto-update stamps the throttle" 0 0 || check "ctx: auto-update stamps the throttle" 0 1
+rm -f "$T/home/claude-calls.log"
+printf '{"session_id":"me"}' | HOME="$T/home" PATH="$T/bin:$PATH" "$CTX" >/dev/null
+sleep 1
+[ ! -e "$T/home/claude-calls.log" ] && check "ctx: fresh stamp throttles repeat updates" 0 0 || check "ctx: fresh stamp throttles repeat updates" 0 1
+
 echo "skill preamble lint"
 
 # Every dynamic !-command in a skill must exit 0 in bash AND zsh on an empty repo —

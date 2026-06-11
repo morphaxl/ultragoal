@@ -381,6 +381,7 @@ function readKnobs(root) {
       budget: g('default-budget'),
       cadence: g('verification-cadence'),
       interview: g('interview-depth'),
+      autoupdate: g('auto-update'),
     };
   } catch {
     return {};
@@ -410,6 +411,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | default-budget | ${prev.budget || '25'} |
 | verification-cadence | ${prev.cadence || 'final'} |
 | interview-depth | ${prev.interview || 'adaptive'} |
+| auto-update | ${prev.autoupdate || 'on'} |
 `
   );
 

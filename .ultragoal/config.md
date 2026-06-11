@@ -12,3 +12,4 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | default-budget | 25 |
 | verification-cadence | final |
 | interview-depth | quick |
+| auto-update | on |

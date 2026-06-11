@@ -29,6 +29,24 @@ s=0; [ -r "$sess_file" ] && s="$(tr -dc '0-9' < "$sess_file" 2>/dev/null)"
 case "$s" in '') s=0 ;; esac
 s=$((s + 1)); printf '%s' "$s" > "$sess_file" 2>/dev/null || true
 
+# ---- background self-update (project-scoped pins never auto-update natively) -
+# Opt-out via the auto-update config knob. Throttled to once a day per machine
+# (stamp in $HOME/.claude). Fully detached and silent: session start must never
+# wait on, or fail with, the network. Applies on the NEXT session, by design.
+auto="$(sed -n 's/^| auto-update | *//p' "$UG/config.md" 2>/dev/null | head -1 | tr -d ' |')"
+if [ "$auto" != "off" ] && command -v claude >/dev/null 2>&1; then
+  stamp="$HOME/.claude/ultragoal-update-stamp"
+  if [ ! -e "$stamp" ] || [ -n "$(find "$stamp" -mmin +1440 2>/dev/null)" ]; then
+    mkdir -p "$HOME/.claude" 2>/dev/null
+    : > "$stamp" 2>/dev/null
+    (
+      claude plugin marketplace update ultragoal
+      claude plugin update ultragoal@ultragoal --scope project
+      claude plugin update ultragoal@ultragoal --scope user
+    ) </dev/null >/dev/null 2>&1 &
+  fi
+fi
+
 echo "<ultragoal-context>"
 
 mine=""; mine_dir=""; others=0
