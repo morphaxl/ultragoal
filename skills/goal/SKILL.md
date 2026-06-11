@@ -1,6 +1,6 @@
 ---
 name: goal
-description: Turn a messy brain dump (raw voice transcript welcome) into a verifiable goal with a checkable rubric, then work autonomously until it is verified and lessons are saved. Use for substantial end-to-end work — build, fix, migrate, investigate.
+description: Turn a messy brain dump (raw voice transcript welcome) into a verifiable goal with a checkable rubric, then work autonomously until it is verified and lessons are saved. Use for substantial end-to-end work — build, fix, migrate, investigate — AND for follow-up rounds on a finished or paused goal ("next round", "improve on this"); re-invoke it rather than arming from memory of a previous round.
 argument-hint: [describe what you want — an unedited voice ramble is fine]
 ---
 
@@ -73,7 +73,7 @@ Before any building, give the user a tight, skimmable recap so they can course-c
 3. **What I'm going to do** — 3–6 bullets: the order of work, what gets delegated to subagents, where the risk is, when the verifier runs.
 4. **How we'll know it's done** — the rubric in brief (the checkable end state and the stop conditions/budget).
 
-Then ask for a yes / edits. Keep it scannable — this is a confirmation, not the full spec dump; the spec file holds the detail.
+Then ask for a yes / edits — the recap and the arm question go in the **same message**, recap first. Never ask "arm and start?" before the spec is drafted: if the four parts above aren't written yet, write them before asking. This holds for every goal, including follow-up rounds in a session that has already run goals — earlier rounds never waive the recap, because each round's decisions and rubric are new. Keep it scannable — this is a confirmation, not the full spec dump; the spec file holds the detail.
 
 On yes:
 

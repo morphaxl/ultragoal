@@ -2,6 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, rmSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
@@ -30,10 +31,11 @@ function banner() {
 }
 
 // ---------------------------------------------------------------- claude ---
-function claude(cmdArgs, { quiet = true } = {}) {
+function claude(cmdArgs, { quiet = true, cwd } = {}) {
   const res = spawnSync('claude', cmdArgs, {
     stdio: quiet ? 'pipe' : 'inherit',
     encoding: 'utf8',
+    cwd,
   });
   if (res.error && res.error.code === 'ENOENT') return { missing: true, status: 1 };
   return res;
@@ -60,7 +62,9 @@ if (flag('--help') || flag('-h')) {
         --worktree             run in a fresh git worktree — isolated checkout, so
                                parallel goals on one repo can't collide
         --headless             non-interactive: runs the loop to completion and exits
-    npx ultragoal update       update to the latest version
+    npx ultragoal update       update every install — user scope and all
+                               per-project pins (project installs never
+                               auto-update; this sweeps them in one go)
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
     npx ultragoal uninstall --purge
                                also delete this repo's .ultragoal/ and CLAUDE.md block
@@ -127,16 +131,43 @@ if (args[0] === 'update') {
     bail('ultragoal doesn\'t look installed — run: npx ultragoal');
   }
   us.stop('Marketplace refreshed');
-  us.start('Updating the plugin');
-  const up = claude(['plugin', 'update', PLUGIN]);
-  if ((up.status ?? 1) === 0) {
-    const line = ((up.stdout || '') + (up.stderr || '')).trim().split('\n').pop() || 'Plugin updated';
-    us.stop(line.replace(/^[✔✖]\s*/, ''));
-    p.outro(pc.green('ultragoal is up to date.') + pc.dim(' Restart Claude Code to apply.'));
-    process.exit(0);
+
+  // Update EVERY install of the plugin, not just user scope. Project-scoped
+  // installs pin their version per project and are skipped by Claude Code's
+  // startup auto-update, so they go stale silently — sweep them all here.
+  let installs = [];
+  try {
+    const reg = JSON.parse(readFileSync(join(homedir(), '.claude', 'plugins', 'installed_plugins.json'), 'utf8'));
+    installs = reg.plugins?.[PLUGIN] ?? [];
+  } catch {
+    /* registry unreadable — fall back to a plain user-scope update */
   }
-  us.stop(pc.red('Update failed'));
-  bail('Is it installed? Run: npx ultragoal');
+  if (installs.length === 0) installs = [{ scope: 'user' }];
+
+  let ok = 0, failed = 0, skipped = 0;
+  for (const inst of installs) {
+    const where = inst.projectPath ? `${inst.scope} scope · ${inst.projectPath}` : `${inst.scope} scope`;
+    if (inst.projectPath && !existsSync(inst.projectPath)) {
+      p.log.info(pc.dim(`Skipped ${where} — directory no longer exists`));
+      skipped++;
+      continue;
+    }
+    us.start(`Updating ${where}`);
+    const up = claude(['plugin', 'update', PLUGIN, '--scope', inst.scope], { cwd: inst.projectPath });
+    if ((up.status ?? 1) === 0) {
+      const line = ((up.stdout || '') + (up.stderr || '')).trim().split('\n').pop() || 'updated';
+      us.stop(`${where}: ${line.replace(/^[✔✖]\s*/, '').replace(/ \(.*\)\.?/, '').replace(/ Restart.*$/, '')}`);
+      ok++;
+    } else {
+      us.stop(pc.red(`${where}: update failed`));
+      failed++;
+    }
+  }
+
+  if (ok === 0) bail('No install could be updated — is it installed? Run: npx ultragoal');
+  const tally = [`${ok} updated`, skipped && `${skipped} skipped`, failed && `${failed} failed`].filter(Boolean).join(', ');
+  p.outro(pc.green(`ultragoal is up to date (${tally}).`) + pc.dim(' Restart Claude Code sessions to apply.'));
+  process.exit(0);
 }
 
 // ------------------------------------------------------------- uninstall ---
