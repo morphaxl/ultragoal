@@ -1,0 +1,6 @@
+task	arm	passes	checks	turns	tokens	model	harness_commit
+csv-stats	vanilla	9	9	7	130711	claude-fable-5	8572d47
+slugify	vanilla	12	12	6	152098	claude-fable-5	8572d47
+csv-stats	ultragoal	9	9	38	1201655	claude-fable-5	8572d47
+todo-json	vanilla	7	7	6	157014	claude-fable-5	8572d47
+slugify	ultragoal	12	12	41	1644619	claude-fable-5	8572d47

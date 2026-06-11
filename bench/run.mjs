@@ -12,6 +12,9 @@
 //   node bench/run.mjs --selftest                 validate every task: check FAILS on seed, PASSES on reference fix
 //   node bench/run.mjs --smoke                    1 task x 2 arms x 1 rep -> bench/results/smoke.tsv
 //   node bench/run.mjs --baseline                 all tasks x 2 arms x 3 reps -> bench/results/baseline.tsv
+//   node bench/run.mjs --measure                  FROZEN cost metric: ultragoal arm x all tasks x 1 rep;
+//                                                 prints `MEASURE mean_tokens=<N> solved=<k>/3 loop=<k>/3`
+//                                                 (loop = sandbox finished with a hash-bound verified PASS)
 //   node bench/run.mjs --task <t> --arm <a> --rep <n> [--out <tsv>]   single run (for re-running crashes)
 // Options: --parallel <n> (default 2), --timeout-min <m> (default 25), --reps <n> (default 3), --keep
 
@@ -125,7 +128,9 @@ function parseResult(out) {
 async function oneRun(task, arm, rep, outFile) {
   const brief = sh('cat', [join(TASKS_DIR, task, 'brief.txt')]).stdout.trim();
   const box = makeSandbox(task);
-  const logBase = join(LOGS, `${task}-${arm}-r${rep}`);
+  // suite-prefixed so different suites never clobber each other's raw logs
+  const suite = (outFile.split('/').pop() || 'run').replace(/\.tsv$/, '');
+  const logBase = join(LOGS, `${suite}-${task}-${arm}-r${rep}`);
   const label = `${task}/${arm}/r${rep}`;
   console.log(`[bench] start ${label} (sandbox ${box})`);
   const t0 = Date.now();
@@ -144,10 +149,16 @@ async function oneRun(task, arm, rep, outFile) {
     if (!KEEP) rmSync(box, { recursive: true, force: true });
     return false;
   }
+  // loop integrity (ultragoal arm): the sandbox's goal must carry a hash-bound verified PASS —
+  // guards the cost metric against "optimizations" that delete verification itself
+  let loopOk = false;
+  if (arm === 'ultragoal') {
+    loopOk = sh('grep', ['-rl', 'ULTRAGOAL-VERIFIED: PASS rubric=', join(box, '.ultragoal', 'goals')]).status === 0;
+  }
   appendFileSync(outFile, `${task}\t${arm}\t${graded.passes}\t${graded.checks}\t${meta.turns}\t${meta.tokens}\t${meta.model}\t${commit()}\n`);
-  console.log(`[bench] done ${label}: ${graded.passes}/${graded.checks} checks, ${meta.turns} turns, ${meta.tokens} tokens, ${((Date.now() - t0) / 60000).toFixed(1)}m${graded.detail ? ` | ${graded.detail.split('\n').join('; ')}` : ''}`);
+  console.log(`[bench] done ${label}: ${graded.passes}/${graded.checks} checks, ${meta.turns} turns, ${meta.tokens} tokens, ${((Date.now() - t0) / 60000).toFixed(1)}m${arm === 'ultragoal' ? ` loop=${loopOk ? 'ok' : 'MISSING'}` : ''}${graded.detail ? ` | ${graded.detail.split('\n').join('; ')}` : ''}`);
   if (!KEEP) rmSync(box, { recursive: true, force: true });
-  return true;
+  return { ok: true, passes: graded.passes, checks: graded.checks, tokens: meta.tokens, loopOk };
 }
 
 async function pool(jobs, width) {
@@ -174,12 +185,31 @@ async function suite(taskList, reps, outFile) {
   process.exit(okCount === jobs.length ? 0 : 1);
 }
 
+async function measure() {
+  mkdirSync(LOGS, { recursive: true });
+  const outFile = join(RESULTS, `measure-${commit()}-${Date.now()}.tsv`);
+  writeFileSync(outFile, HEADER);
+  const all = tasks();
+  const results = (await pool(all.map((task) => () => oneRun(task, 'ultragoal', 1, outFile)), PARALLEL)).filter((r) => r && r.ok);
+  if (results.length !== all.length) {
+    console.log(`MEASURE ERROR incomplete (${results.length}/${all.length} runs finished — re-run)`);
+    process.exit(1);
+  }
+  const mean = Math.round(results.reduce((a, r) => a + r.tokens, 0) / results.length);
+  const solved = results.filter((r) => r.passes === r.checks).length;
+  const loop = results.filter((r) => r.loopOk).length;
+  console.log(`MEASURE mean_tokens=${mean} solved=${solved}/${all.length} loop=${loop}/${all.length}`);
+  process.exit(0);
+}
+
 if (flag('selftest')) {
   selftest();
 } else if (flag('smoke')) {
   await suite([tasks()[0]], 1, join(RESULTS, 'smoke.tsv'));
 } else if (flag('baseline')) {
   await suite(tasks(), REPS, join(RESULTS, 'baseline.tsv'));
+} else if (flag('measure')) {
+  await measure();
 } else if (opt('task', null) && opt('arm', null)) {
   mkdirSync(LOGS, { recursive: true });
   const outFile = opt('out', join(RESULTS, 'baseline.tsv'));
@@ -187,6 +217,6 @@ if (flag('selftest')) {
   const ok = await oneRun(opt('task', null), opt('arm', null), Number(opt('rep', 1)), outFile);
   process.exit(ok ? 0 : 1);
 } else {
-  console.error('usage: run.mjs --selftest | --smoke | --baseline | --task <t> --arm <vanilla|ultragoal> --rep <n>');
+  console.error('usage: run.mjs --selftest | --smoke | --baseline | --measure | --task <t> --arm <vanilla|ultragoal> --rep <n>');
   process.exit(2);
 }
