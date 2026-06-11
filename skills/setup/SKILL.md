@@ -34,6 +34,8 @@ Create (don't overwrite anything that exists):
     └── failures.md      ←   "
 ```
 
+Running non-interactively (no user present), scaffold the minimum instead: `config.md` and `memory/MEMORY.md` only — topic files get created by the remember protocol on first write, and a throwaway run that never writes memory shouldn't pay for empty templates.
+
 If memory sharing = local-only, add `.ultragoal/memory/` to `.gitignore`. Either way add `.ultragoal/goals/active/*/.turns`, `.ultragoal/goals/active/*/.rubric-hash`, and `.ultragoal/memory/.sessions` to `.gitignore` (machine-local, per-session counters that shouldn't be shared).
 
 ## 3. CLAUDE.md block
@@ -42,7 +44,7 @@ Assemble the block from [claude-md-block.md](claude-md-block.md): the fixed memo
 
 - If the project's `CLAUDE.md` already has `<!-- ultragoal:start -->` markers, replace the content between them.
 - Else append the block to `CLAUDE.md` (create the file if missing).
-- Show the user the block before writing and confirm — it's their file.
+- Show the user the block before writing and confirm — it's their file. (Non-interactive: write the fixed core only, skip the per-knob snippets — defaults are already the skills' built-in behavior.)
 
 ## 4. Optional memory bootstrap
 
