@@ -9,6 +9,8 @@
 
 ## Current understanding
 
+- Product positioning is PREMIUM, results-first: never let token cost limit pursuing bold mechanisms — the answer to cost is a communicative UX, not restraint. Tell users up front, in rough terms, what a run will consume — in units the loop actually counts (turns, subagent dispatches), NEVER wall-clock estimates, which agents are reliably bad at — state costs honestly at the point of choice, then pursue the strongest result. Don't anti-sell expensive modes ("overkill", "right economics" hedging) — users who want ultragoal want the delta. [USER-CORRECTION · 2026-06-11, revising same-day cost-discipline correction]
+
 - Goals are PER-SESSION, not per-repo: each lives in .ultragoal/goals/active/<slug>/goal.md with a session: field; the gate enforces only the stopping session's goal, so concurrent goals across sessions in one repo are the intended model. Owner hit the old one-goal-per-repo limit in real use (running parallel background agents). [USER-CORRECTION · 2026-06-11]
 
 - `npx ultragoal run` defaults to FULL autonomy (--dangerously-skip-permissions); --safe is the opt-out. Owner: "by default I want it to be dangerous when you do run, that's the whole point." [USER-CORRECTION · 2026-06-10]
@@ -28,3 +30,6 @@
 [2026-06-11 S5] refactored single active.md → per-session active/<slug>/ dirs; gate/banner/skills/tests updated; 32 gate tests incl. concurrency cases pass.
 [2026-06-11 S6] owner reported goal armed without pre-arm recap in BeyondPlay (round-5 same-session goal, conversational brief, no skill re-invocation); root causes: project-scope pin at 0.8.0 + phase-collapsing on repeat rounds. Updated pin to 0.10.4; hardened SKILL.md Phase 4 (recap+question same message, never ask before spec drafted, repeat rounds never waive) and description (re-invoke for follow-up rounds).
 [2026-06-11 S6] harness-research goal: 40-source research sweep; verifier PASS rubric=1028711716; found gitignore shadowing + self-matching grep check; both fixed/recorded.
+[2026-06-11 S7] owner pushed back on panel verification's token cost ("people will not use the product if cost is not worth the delta"); recorded as the feature-economics rule; copy updated to state panel's bounded cost and cheap-model lens guidance.
+[2026-06-11 S7] owner revised same day: "don't let the token scare limit pursuing bold — adopt a communicative ux of letting users know in rough terms how long it could go; ultragoal is a product for the premium where results are more important." De-hedged the copy; recap gains a cost/duration expectations part.
+[2026-06-11 S7] owner refined again: "agents are really bad at estimating time so it shouldn't be time based the communication" — the recap's scale line uses turns + subagent-dispatch counts, never wall-clock estimates.

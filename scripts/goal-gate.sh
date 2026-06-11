@@ -78,7 +78,8 @@ budget="$(read_field "$GOAL" budget)"
 case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
 slug="$(read_field "$GOAL" slug)"; [ -n "$slug" ] || slug="active goal"
 kind="$(read_field "$GOAL" kind)"; [ -n "$kind" ] || kind="task"
-verify="$(read_field "$GOAL" verify)"; [ "$verify" = "off" ] || verify="on"
+verify="$(read_field "$GOAL" verify)"
+case "$verify" in off|panel) ;; *) verify="on" ;; esac
 
 # ---- rubric integrity (hash frozen at arm; change invalidates verdicts) -----
 hash_file="$GDIR/.rubric-hash"
@@ -139,12 +140,28 @@ no_evid="$(printf '%s\n' "$rubric" | awk '
 case "$no_evid" in '' | *[!0-9]*) no_evid=0 ;; esac
 
 verified=0
-last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
-case "$last_verdict" in
-  *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) [ -n "$rubric_hash" ] && verified=1 ;;
-esac
-if [ "$verify" = "off" ] && [ "$unchecked_count" -eq 0 ]; then
-  verified=1
+panel_missing=""
+if [ "$verify" = "panel" ]; then
+  # Panel: the most recent verdict for EACH lens must be a PASS bound to the
+  # current rubric hash. A missing, failing, or stale lens blocks release.
+  if [ -n "$rubric_hash" ]; then
+    verified=1
+    for lens in checks refute constraints; do
+      lv="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | grep "lens=$lens" | tail -1)"
+      case "$lv" in
+        *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) ;;
+        *) verified=0; panel_missing="$panel_missing $lens" ;;
+      esac
+    done
+  fi
+else
+  last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
+  case "$last_verdict" in
+    *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) [ -n "$rubric_hash" ] && verified=1 ;;
+  esac
+  if [ "$verify" = "off" ] && [ "$unchecked_count" -eq 0 ]; then
+    verified=1
+  fi
 fi
 
 if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
@@ -154,6 +171,8 @@ if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
     if [ "$unchecked_count" -gt 0 ]; then
       echo "Remaining rubric items:"
       printf '%s\n' "$unchecked"
+    elif [ "$verify" = "panel" ]; then
+      echo "All rubric boxes are checked, but the panel verdict is incomplete (missing, failing, or stale:$panel_missing). The most recent verdict for each lens must be exactly \"ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash lens=<lens>\" for all three lenses: checks, refute, constraints."
     else
       echo "All rubric boxes are checked, but there is no valid verification: the last verdict must be exactly \"ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash\" (issued by the verifier against the current rubric)."
     fi
@@ -175,6 +194,8 @@ EOF
       echo '- Never check a rubric box without evidence from a command you ran this session.'
       if [ "$verify" = "off" ]; then
         echo '- Verification is OFF for this goal: your own command evidence suffices to check a box — the evidence must still be real and from this session.'
+      elif [ "$verify" = "panel" ]; then
+        echo '- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context) as usual. The FINAL sign-off is a PANEL: dispatch three verifier subagents in ONE message (parallel, so they stay mutually blind), assigning one lens each — checks, refute, constraints. Each appends its own lens-tagged verdict; the goal completes only when all three lenses PASS against the current rubric.'
       else
         echo '- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the goal file. Only a valid PASS verdict bound to the current rubric completes the goal.'
       fi

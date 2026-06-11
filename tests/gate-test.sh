@@ -136,6 +136,27 @@ check_all_boxes; run_gate
 check "verify off + all checked -> distill, no verdict needed" 2 "$RC" "Distill" "$ERR"
 grep -q "no valid verification" "$ERR" && check "verify off skips verdict demand" 0 1 || check "verify off skips verdict demand" 0 0
 
+fresh; goalfile active task 25 "" panel; run_gate
+check "verify panel + unchecked -> panel protocol shown" 2 "$RC" "PANEL" "$ERR"
+check_all_boxes; H="$(rubric_hash)"
+printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s lens=checks\n' "$H" >> "$GOAL"
+printf 'ULTRAGOAL-VERIFIED: PASS rubric=%s lens=refute\n' "$H" >> "$GOAL"
+run_gate
+check "panel with one lens missing -> block names it" 2 "$RC" "stale: constraints" "$ERR"
+printf 'ULTRAGOAL-VERIFIED: PASS rubric=%s lens=constraints\n' "$H" >> "$GOAL"; run_gate
+check "full three-lens panel PASS -> distill step" 2 "$RC" "Distill" "$ERR"
+printf 'ULTRAGOAL-VERIFIED: FAIL rubric=%s lens=refute — gamed check\n' "$H" >> "$GOAL"; run_gate
+check "later lens FAIL beats its older PASS" 2 "$RC" "panel verdict is incomplete" "$ERR"
+
+fresh; goalfile active task 25 "" panel; check_all_boxes; run_gate
+printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s\n' "$(rubric_hash)" >> "$GOAL"; run_gate
+check "panel: un-lensed PASS does not release" 2 "$RC" "panel verdict is incomplete" "$ERR"
+
+fresh; goalfile active task 25 "" panel; check_all_boxes; run_gate
+for l in checks refute constraints; do printf 'ULTRAGOAL-VERIFIED: PASS rubric=999999 lens=%s\n' "$l" >> "$GOAL"; done
+run_gate
+check "panel: stale-hash lenses -> block" 2 "$RC" "panel verdict is incomplete" "$ERR"
+
 fresh; goalfile active task 1; run_gate           # turn 1: normal block
 run_gate; check "turn budget+1 -> nudge" 2 "$RC" "budget reached" "$ERR"
 run_gate; check "past nudge -> open" 0 "$RC"

@@ -3,3 +3,5 @@ date	slug	kind	outcome	turns	verifier_fails	budget
 2026-06-10	goal-flow-dx-miniprompts	task	done	0	0	15
 2026-06-10	rubric-library	task	done	0	0	18
 2026-06-11	harness-research	task	done	1	0	30
+2026-06-11	robustness-research	task	abandoned	0	0	30
+2026-06-11	multiagent-orchestration	task	done	1	0	35

@@ -20,6 +20,7 @@ Procedure — in this order:
 Rules:
 
 - A claim with no command output behind it is FAIL by default.
+- Form your verdict before reading any earlier Verification-log entries. Prior verdicts are not evidence in either direction — visible votes measurably cause herding and premature convergence.
 - Never trust narrative. "Tests were passing earlier" is not evidence; a passing test run you executed is. The Decision journal and any prose in the goal file are context, never evidence — fluent self-reports are exactly what biases a judge.
 - Read the actual artifacts (diffs, files, outputs), not summaries of them.
 - Check the goal's Constraints section too: an item can pass its own check while violating a constraint — that's a FAIL with the constraint named.
@@ -27,6 +28,16 @@ Rules:
 - Your Bash use is read-and-measure only: run tests, builds, linters, benchmarks, git inspection. Never modify code, files, or state — the single exception is appending your verdict to the goal file as described below. You must never check a rubric box; that is the worker's act, taken only after your PASS.
 - If a check command is broken or ambiguous, that's a finding, not a pass: report what's wrong with the check itself.
 - On `kind: experiment` goals, additionally: re-run the measure command yourself and confirm the claimed final number (within the noted variance); spot-check that `results.tsv` rows reference real commits (`git cat-file -t <hash>`); and confirm the measure command and its inputs are untouched (`git diff <baseline commit> -- <measure paths>` is empty). A moved goalpost is an automatic FAIL.
+
+## Panel lenses
+
+Goals with `verify: panel` take their final sign-off from a three-verifier panel. If your dispatch prompt assigns you a lens, you are one of three panelists dispatched in parallel — mutually blind by construction. Run the full procedure above, weighted to your lens:
+
+- **lens=checks** — mechanical reproduction. Re-run every rubric check command exactly as written; judge only the command outputs. You are the panel's objective anchor: no interpretation, no charity.
+- **lens=refute** — adversarial. Assume the checks can pass while the intent fails. Hunt for hard-coded values, special-cased inputs, weakened thresholds, work that satisfies the letter of a check but not its claim. Run probing commands of your own design beyond the listed ones.
+- **lens=constraints** — scope. Verify every item in the Constraints section, read the actual diff for out-of-scope or unrequested changes, and confirm the goal's invariants — the things that must NOT have changed.
+
+Panel verdict lines carry the lens tag: `ULTRAGOAL-VERIFIED: PASS rubric=$HASH lens=checks` (FAIL likewise, with the reason). Write exactly one verdict, for your own lens only — never another panelist's. The gate releases only when the most recent verdict for ALL three lenses is a PASS bound to the current rubric hash.
 
 ## Recording the verdict
 

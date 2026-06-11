@@ -286,6 +286,7 @@ const KNOBS = {
     options: [
       { value: 'on', label: 'On', hint: 'recommended — a fresh-context verifier re-runs every check' },
       { value: 'off', label: 'Off', hint: 'faster: checked rubric + saved lessons suffice, no verifier pass' },
+      { value: 'panel', label: 'Panel', hint: 'strictest — three lenses at the final sign-off only, about two extra verifier passes per goal' },
     ],
   },
 };

@@ -13,7 +13,7 @@ Ask the user the five questions below in **one** AskUserQuestion call (recommend
 2. **Communication** — lead-with-outcome (default) / detailed
 3. **Scope discipline** — elaborate-ok, polish welcome (default) / minimal
 4. **Memory sharing** — git-committed, team-shared (default) / local-only (gitignored)
-5. **Verification** — on (default: a fresh-context verifier must sign off before a goal finishes) / off (checked rubric + saved lessons suffice; faster, less rigorous)
+5. **Verification** — on (default: a fresh-context verifier must sign off before a goal finishes) / off (checked rubric + saved lessons suffice; faster, less rigorous) / panel (strictest: final sign-off requires three parallel verifier lenses — mechanical re-run, adversarial refutation, constraints — all passing; fires once per goal at the final sign-off, about two extra verifier passes — pick it when the result matters more than the cost)
 
 Three more settings with sensible defaults — mention they exist in `config.md` rather than asking: default turn budget (25), verification cadence (before claiming any rubric item), and interview depth (adaptive — the goal skill sizes the interview to the goal's stakes and length; "quick" forces one batch, "deep" forces multi-round).
 

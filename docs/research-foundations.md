@@ -1,6 +1,6 @@
 # Research foundations
 
-Every mechanism in ultragoal traces to published research or documented engineering practice — nothing in the loop is vibes. This page maps each design decision to its evidence. The raw feed behind it: dated research memos in [`docs/research/`](research/) (latest: [June 2026 harness sweep](research/harness-research-2026-06.md), 40 primary sources across Anthropic, practitioner, Chinese-lab, and academic communities).
+Every mechanism in ultragoal traces to published research or documented engineering practice — nothing in the loop is vibes. This page maps each design decision to its evidence. The raw feed behind it: dated research memos in [`docs/research/`](research/) (latest: the [June 2026 harness sweep](research/harness-research-2026-06.md) and the [June 2026 multi-agent orchestration sweep](research/multiagent-orchestration-2026-06.md), each drawing on dozens of primary sources across Anthropic, practitioner, Chinese-lab, and academic communities).
 
 ## The core loop
 
@@ -14,6 +14,7 @@ Every mechanism in ultragoal traces to published research or documented engineer
 | **Checks emit one decisive line** (wrap noisy commands) | Verbose raw output pollutes the loop's context and degrades it; a flawed or noisy verifier signal gets faithfully optimized. | [Anthropic: building a C compiler with Claude](https://www.anthropic.com/engineering/building-c-compiler) |
 | **Mandatory turn budgets & stop conditions** | Unattended loops without budgets fail open-endedly (the documented 264-hour, $47,000 two-agent ping-pong); budgets are the loop-prevention the harness must own. | [Eigen Labs: verifiable looping agents](https://x.com/zeeshan_utd/article/2064703809990135846) |
 | **In-session Stop-hook loop, fail-open** | The loop-inside-the-session pattern (cancellable, permission-aware) over external bash wrappers. | [Anthropic ralph-loop plugin pattern](https://github.com/anthropics/claude-plugins-official) |
+| **Fan-out sizing rules** (parallel subagents only for decomposable read-heavy work, sized to the task) | Orchestrator-worker fan-out beat single-agent by 90.2% on parallelizable research — at ~15× token cost — while compute-matched single agents reach parity on sequential work; explicit scaling rules in the orchestrator prompt prevent over-spawning. | [Anthropic: multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) · [Single-agent parity at equal budget](https://arxiv.org/abs/2604.02460) |
 
 ## Verification
 
@@ -27,6 +28,8 @@ Every mechanism in ultragoal traces to published research or documented engineer
 | **Earliest-failure localization in FAIL reports** | Recovery from the first wrong step beats both full restarts and end-of-trajectory reflection. | [Agent-R (ByteDance)](https://arxiv.org/abs/2501.11425) |
 | **Rubric-hash-bound verdicts** (editing a check voids all prior approvals) | In-context anti-cheating exhortations are near-worthless under incentive pressure — checkability and tamper-evidence are the defense; capable models will route around weak check infrastructure. | [METR: reward hacking](https://metr.org/blog/2025-06-05-recent-reward-hacking/) · [Anthropic: eval awareness](https://www.anthropic.com/engineering/eval-awareness-browsecomp) |
 | **Verify-before-stop gating works *with* the model's training** | Self-verification is an in-distribution behavior under verifiable-reward RL that grows with allotted budget — the gate triggers latent trained behavior rather than fighting it. | [DeepSeek-R1](https://arxiv.org/abs/2501.12948) |
+| **Panel verification** (`verify: panel` — final sign-off by three parallel, mutually-blind verifier lenses: mechanical re-run, adversarial refutation, constraints; all must pass) | Aspect-split verifier ensembles gain ~10–20% and keep scaling where repeat-sampling plateaus; juries of small judges beat one large judge at ~1/7 the cost — so the panel fires once per goal at the final sign-off (~2 extra verifier passes) and small models suffice for the mechanical lens; visible votes cause herding, so panelists stay blind; ensemble gains saturate by ~3 judges. | [BoN-MAV](https://arxiv.org/pdf/2502.20379) · [PoLL](https://arxiv.org/abs/2404.18796) · [Herding under vote visibility](https://arxiv.org/abs/2509.23537) · [MacNet scaling law](https://arxiv.org/abs/2406.07155) |
+| **Verifiers stay independent — no deliberation, no reading prior verdicts** | Multi-agent debate routinely loses to independent sampling: agents flip correct answers to agree with peers, and accuracy can decline over debate rounds. | [Debate vs. independence](https://arxiv.org/abs/2502.08788) · [Conformity flips](https://arxiv.org/abs/2509.05396) |
 
 ## Memory
 
