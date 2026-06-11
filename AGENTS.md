@@ -10,7 +10,8 @@ skills/           the skills: goal, status, stop, remember, compact, setup, veri
   goal/           flagship; supporting files: rubric-guide, experiment-guide, goal-template, rubrics/ (the rubric library)
 agents/           verifier.md — the fresh-context verifier subagent
 hooks/hooks.json  Stop → goal-gate.sh; SessionStart → session-context.sh
-scripts/          goal-gate.sh (the loop engine) + session-context.sh — POSIX shell, fail-open
+monitors/         monitors.json — goal-log-watch background monitor (starts on first goal-skill invoke; interactive sessions only)
+scripts/          goal-gate.sh (the loop engine) + session-context.sh + goal-log-monitor.sh — POSIX shell, fail-open/fail-quiet
 installer/cli.mjs the npx installer (clack TUI); the ONLY file shipped to npm
 tests/gate-test.sh  the engine regression suite (run in CI)
 ```

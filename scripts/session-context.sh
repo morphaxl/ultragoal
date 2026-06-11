@@ -74,7 +74,13 @@ if [ -r "$MEM" ]; then
 fi
 
 if [ "$s" -ge 10 ]; then
-  echo "Memory upkeep: $s sessions since the last compaction — when convenient, suggest /ultragoal:compact to the user."
+  evidence="$(grep -h '^\[20' "$UG/memory"/*.md 2>/dev/null | grep -c . 2>/dev/null)"
+  case "$evidence" in '' | *[!0-9]*) evidence=0 ;; esac
+  if [ "$evidence" -gt 0 ]; then
+    echo "Memory upkeep: $s sessions since the last compaction — when convenient, suggest /ultragoal:compact to the user."
+  else
+    echo "Memory upkeep: $s sessions in and the project memory has no evidence entries yet — lessons are being lost. Goal completions distill automatically; after substantive NON-goal work, run the ultragoal:remember protocol (or suggest it to the user). Compaction isn't needed until memory has content."
+  fi
 fi
 
 echo "</ultragoal-context>"

@@ -94,6 +94,14 @@ ta="$(cat "$UG/goals/active/alpha/.turns" 2>/dev/null)"; tb="$(cat "$UG/goals/ac
 
 fresh; goalfile paused; run_gate; check "paused -> open" 0 "$RC"
 
+# a goal marked done but left in active/ gets ONE bookkeeping nudge, then opens
+fresh; goalfile done; run_gate
+check "done in active/ -> bookkeeping nudge" 2 "$RC" "bookkeeping" "$ERR"
+run_gate
+check "done in active/, already nudged -> open (fail open)" 0 "$RC"
+fresh; goalfile done task 25 "sX"; run_gate "s1"
+check "done goal of OTHER session -> open" 0 "$RC"
+
 fresh; goalfile active experiment; run_gate
 check "experiment kind -> ratchet protocol" 2 "$RC" "ratchet" "$ERR"
 
@@ -149,6 +157,14 @@ printf '# x\n---\n## Evidence log\n[2026-01-01 S1] old\n' > "$UG/memory/facts.md
 ( cd "$T" && git init -q && git -c user.name=t -c user.email=t@t commit -q --allow-empty -m a && for i in $(seq 1 25); do git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "c$i"; done )
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"
 echo "$OUT" | grep -q "Staleness warning" && check "ctx: staleness warning" 0 0 || check "ctx: staleness warning" 0 1
+
+# cadence nudge: compact when memory has evidence, remember when it's empty
+printf '11' > "$UG/memory/.sessions"
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "suggest /ultragoal:compact" && check "ctx: compact nudge when memory has evidence" 0 0 || check "ctx: compact nudge when memory has evidence" 0 1
+rm -f "$UG/memory/facts.md"; printf '11' > "$UG/memory/.sessions"
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "no evidence entries yet" && check "ctx: remember nudge when memory empty" 0 0 || check "ctx: remember nudge when memory empty" 0 1
 
 echo "skill preamble lint"
 

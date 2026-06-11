@@ -384,7 +384,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | verification | ${picks.verification} |
 | default-budget | 25 |
 | verification-cadence | every-claim |
-| interview-depth | quick |
+| interview-depth | adaptive |
 `
   );
 

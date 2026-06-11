@@ -74,6 +74,8 @@ That's a real, unedited ramble — exactly what it's built for. Ultragoal will:
 
 Walk away mid-goal, close the laptop, `/clear` — the goal survives. Next session opens with a banner: *"Active goal 'checkout-latency' — turn 9 of 25."*
 
+Want better goals from the first try? [docs/briefing-guide.md](docs/briefing-guide.md) lists the high-value signals — done-criteria, scope edges, constraints, where logs live — that turn a twenty-question interview into a two-question one.
+
 ## Two kinds of goals
 
 **Task goals** — "build this, fix this, migrate this." Done means the checklist holds.

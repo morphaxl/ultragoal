@@ -7,18 +7,21 @@
 1. **Every item checkable by a command, never vibes.** The check must be runnable in this repo, and its output must decide the item unambiguously.
    - Bad: "Database queries should be fast"
    - Good: "All checkout queries complete in <50ms — check: `EXPLAIN ANALYZE` output for each query in `bench/queries.sql`"
+   - If no command can observe the behavior yet, the **first rubric item is building that check** — a script, a bench, a log line, a debug endpoint. Same rule experiments use for the measure command: construct the feedback signal, then push against it.
 2. **Incremental order.** Sequence items so earlier ones are prerequisites for later ones (schema migrates → endpoint returns 200 → error paths covered → integration tests pass → load test holds). The loop should always have a next checkable step, not one all-or-nothing finish line.
 3. **Measurable thresholds, not judgments.** "Elegant", "maintainable", "scales well" are not items. Cyclomatic complexity limits, line budgets, latency percentiles, exit codes, and file counts are.
-4. **Constraints are part of the rubric.** Anything that must NOT change goes in Constraints, and the verifier checks them: "no other test file modified — check: `git diff --stat main -- 'test/**'`".
-5. **Stop conditions are mandatory.** Every rubric without one is an infinite-optimization bug. Default: the turn budget, plus "same item fails verification 3 consecutive times".
-6. **General solutions only.** Add this item to any coding goal where it could matter: solution works for all valid inputs, not just the test cases — no hard-coded values, no special-casing the checks.
-7. **The verifier item is always last and never self-certified:**
+4. **Outcomes, never approaches.** An item names the end state, not the route: "p95 under 200ms", never "add a Redis cache". The moment an item encodes a method, the loop optimizes for compliance instead of exploring for the result — and the biggest wins come from approaches the spec author didn't think of. If the user mandates an approach, record it as a Constraint; otherwise the route belongs to the worker.
+5. **Constraints are part of the rubric.** Anything that must NOT change goes in Constraints, and the verifier checks them: "no other test file modified — check: `git diff --stat main -- 'test/**'`".
+6. **Stop conditions are mandatory.** Every rubric without one is an infinite-optimization bug. Default: the turn budget, plus "same item fails verification 3 consecutive times".
+7. **General solutions only.** Add this item to any coding goal where it could matter: solution works for all valid inputs, not just the test cases — no hard-coded values, no special-casing the checks.
+8. **The verifier item is always last and never self-certified:**
    `- [ ] VERIFIER: independent sign-off recorded in the Verification log`
 
 ## Anti-patterns (reject your draft if any apply)
 
 - Subjective criteria ("clean", "best practices", "polished")
 - Unmeasurable goals ("noticeably faster", "more robust")
+- Items that prescribe the approach ("uses X library", "implements the Y pattern") — outcomes only; a user-mandated approach goes in Constraints
 - Missing stop conditions
 - One giant item instead of an incremental sequence
 - A check command that doesn't exist in this repo or can't run locally

@@ -42,12 +42,13 @@ The leverage usually lives in these forks (pick the 2–5 that actually matter f
 - **Priority tradeoff** — when you can't max everything: speed vs robustness vs polish, coverage vs time, ship-now vs do-it-right. Ask which way to lean.
 - **Risk tolerance** — for anything destructive or hard to reverse: how much autonomy, what must you confirm first.
 
-Make every question concrete and decision-shaped: real options (not "what do you think?"), your **recommended default first** with a one-line why, so the user can ratify fast or override deliberately. Give the reason behind the choice, not just the choice. Prefer one batched `AskUserQuestion` call.
+**Size the interview to what a wrong guess costs.** Check `interview-depth` in `.ultragoal/config.md` (the user can override per-goal by saying "quick" or "deep/thorough interview"):
 
-Check `interview-depth` in `.ultragoal/config.md` (the user can override per-goal by saying "quick" or "deep/thorough interview"):
+- **adaptive** (default): you decide, by one rule — interview investment scales with stakes × ambiguity × run length. A short, reversible goal with a clear brief gets one batch of 2–5 forks. A long autonomous run from a vague ramble, anything destructive, or a greenfield build with many open forks earns the full themed treatment: 4–6 rounds (approach → definition of done → scope edges → priority/risk → verification), which may total 15–30 questions. The arithmetic favors asking: three minutes of one-tap decisions is cheap insurance on a 30-turn overnight run, while the same 20 questions before a one-hour fix cost more than an occasional wrong guess would. Tell the user which way you sized it and why, in one line.
+- **quick**: always one batch, the 2–5 highest-leverage forks.
+- **deep**: always the full themed rounds.
 
-- **quick** (default): one batch, the 2–5 highest-leverage forks.
-- **deep**: multiple rounds, one batch per theme — approach → definition of done → scope edges → priority/risk tradeoffs → how to verify. Skip any round the brief already settles; stop when a round stops changing the plan.
+Whatever the depth, the same rules keep even a 25-question interview painless: every question concrete and decision-shaped — real options (not "what do you think?"), your **recommended default first** with a one-line why, so ratifying is one tap and overriding is deliberate. At most 4 questions per `AskUserQuestion` batch; `multiSelect` where choices aren't exclusive. When going deep, open with one line that sets expectations ("Big goal — about 5 short rounds, every question has a recommended default; accepting all defaults is a fine answer."). Skip any round the brief already settles; stop when a round stops changing the plan.
 
 Never ask what the codebase can answer — go look. If running non-interactively (no user), don't ask: make the most defensible call on each fork and record every such decision explicitly in the spec's Context as an assumption.
 
@@ -63,6 +64,12 @@ First decide the goal's **kind**:
 Copy the structure from [goal-template.md](goal-template.md) and write the rubric following [rubric-guide.md](rubric-guide.md) — read it; rubric quality decides whether this loop converges. A well-designed rubric is doing more work than the model.
 
 Before showing the user, adversarially review your own rubric against the anti-pattern list in the guide (vague judgments, unmeasurable criteria, missing stop conditions, no incremental order, checks the repo can't actually run). Fix what you find.
+
+**Match the machinery to the goal.** The arsenal — parallel Explore scouts, subagent delegation, instrumentation and log monitoring, worktrees, deep interviews, rubric variants, per-claim verifier dispatch — is sized by the same rule as the interview: stakes × ambiguity × length. A tricky, long, or unfamiliar goal earns the full kit; name the pieces you'll use in the recap's plan. A straightforward goal earns restraint: no subagent for work you can do directly in one pass, no instrumentation for behavior an existing test already observes, no worktree for a three-file change. Overkill burns budget and the user's attention; underkill ships unverified guesses. Note the chosen kit in the spec's Context.
+
+**Let the user own the dials.** After drafting, pull out the 2–4 thresholds that define the contract — the latency bar, the coverage floor, how strict the constraints are, the turn budget — and put them to the user as one `AskUserQuestion` batch, recommended value first with the research behind it. A number the user chose is a number they'll trust at verification time; a number buried in a recap is one they'll dispute after 20 turns. Skip this for thresholds the interview already settled.
+
+For goals that earned a deep interview, draft the rubric at two or three contract levels — **lean** (core checks only, ship fast), **standard** (recommended), **strict** (production-grade: the domain template's full security/a11y/perf items) — and present them as previews in a single question so the user picks the bar. Drafting the variants costs minutes; it turns the user from spec-reader into contract-author, and the unchosen items go in the spec's Context as a noted non-goal.
 
 ## Phase 4 — Recap, confirm, and arm
 
@@ -89,6 +96,9 @@ Then **begin working immediately**. Do not end the turn with a plan.
 - Before reporting progress, audit each claim against a tool result from this session. Only report work you can point to evidence for; if something is not yet verified, say so explicitly. If tests fail, say so with the output.
 - Never check a rubric box on your own say-so, and never write a `ULTRAGOAL-VERIFIED` line yourself — that verdict is the verifier's alone. Dispatch the `ultragoal:verifier` subagent at the cadence set in `.ultragoal/config.md` (default: before claiming any rubric item), **passing it the exact path to this goal's `goal.md`** so it hashes and signs the right file. It re-runs the checks and appends the verdict. Check boxes only for items the verifier passed.
 - Log structural decisions and abandoned approaches in the Decision journal as you go — one line each. This feeds distillation.
+- Maximize the feedback you work from — evidence beats inference. Instrument before guessing: add temporary log lines around the suspect path (clean them up before finishing). Run the thing and read what it says: redirect output to a log file and grep/tail it back rather than letting raw output flood the context. Long-running processes (dev servers, watchers, builds) go in the background with output captured to `<goal dir>/logs/<name>.log` — a background monitor watches that directory and surfaces new error/warning lines to you automatically (interactive sessions); grep the full file when you need detail.
+- Some feedback only the user can produce — a device test, an authenticated flow, a command they prefer to run themselves. Make the ask precise: the exact command, what to watch for, where the output lands — and suggest they run it with the `!` prefix so the output arrives in the session. One precise ask beats three vague ones.
+- If a behavior can't be observed, build the observation channel first — a log line, a debug flag, a bench script. The loop is only as smart as its feedback.
 - Delegate independent subtasks to subagents and keep working while they run. Intervene if a subagent goes off track.
 - Don't add features, refactor, or introduce abstractions beyond what the rubric requires. The simplest thing that passes an honest check wins.
 - Pause for the user only when the work genuinely requires them: a destructive or irreversible action, a real scope change, or input that only they can provide. If you hit one of these, ask and end the turn, rather than ending on a promise.

@@ -48,7 +48,31 @@ if [ -z "$GOAL" ] && [ -r "$UG/goals/active.md" ]; then   # legacy single-file g
     fi
   fi
 fi
-[ -n "$GOAL" ] || exit 0
+if [ -z "$GOAL" ]; then
+  # A goal can be marked done without its bookkeeping (stats row, archive move) —
+  # e.g. when the work finished inside the first turn and no gate message ever
+  # landed. Nudge exactly once per goal, then stay out of the way: fail open.
+  if [ -d "$UG/goals/active" ]; then
+    for gf in "$UG/goals/active"/*/goal.md; do
+      [ -r "$gf" ] || continue
+      [ "$(read_field "$gf" status)" = "done" ] || continue
+      gsid="$(read_field "$gf" session)"
+      if [ -n "$gsid" ] && { [ -z "$sid" ] || [ "$gsid" != "$sid" ]; }; then continue; fi
+      gd="$(dirname "$gf")"
+      [ -e "$gd/.archive-nudged" ] && continue
+      : > "$gd/.archive-nudged" 2>/dev/null || continue
+      dslug="$(read_field "$gf" slug)"; [ -n "$dslug" ] || dslug="$(basename "$gd")"
+      cat >&2 <<EOF
+ULTRAGOAL GATE — goal "$dslug" is done but still sitting in goals/active/. Finish the bookkeeping, then stop:
+1. If lessons were not yet distilled into .ultragoal/memory/, do that first (ultragoal:remember).
+2. Append its row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing).
+3. Move $gf to .ultragoal/goals/archive/$dslug.md and remove $gd.
+EOF
+      exit 2
+    done
+  fi
+  exit 0
+fi
 
 budget="$(read_field "$GOAL" budget)"
 case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
