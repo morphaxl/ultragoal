@@ -195,9 +195,9 @@ EOF
       if [ "$verify" = "off" ]; then
         echo '- Verification is OFF for this goal: your own command evidence suffices to check a box — the evidence must still be real and from this session.'
       elif [ "$verify" = "panel" ]; then
-        echo '- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context) as usual. The FINAL sign-off is a PANEL: dispatch three verifier subagents in ONE message (parallel, so they stay mutually blind), assigning one lens each — checks, refute, constraints. Each appends its own lens-tagged verdict; the goal completes only when all three lenses PASS against the current rubric.'
+        echo '- Record evidence under each box as you check it. The FINAL sign-off is a PANEL: dispatch three verifier subagents in ONE message (parallel, so they stay mutually blind), assigning one lens each — checks, refute, constraints. Each appends its own lens-tagged verdict; the goal completes only when all three lenses PASS against the current rubric. Dispatch a single verifier earlier only for an item that already failed or looks shaky.'
       else
-        echo '- Before claiming an item, dispatch the ultragoal:verifier subagent (fresh context); it re-runs the checks itself and appends its verdict to the goal file. Only a valid PASS verdict bound to the current rubric completes the goal.'
+        echo '- Record evidence under each box as you check it, then dispatch the ultragoal:verifier subagent (fresh context) before finishing: it re-runs every check itself and appends its verdict to the goal file. Dispatch it earlier only for an item that already failed once or whose check looks shaky (or if config sets verification-cadence to every-claim). Only a valid PASS verdict bound to the current rubric completes the goal.'
       fi
       echo '- Log structural decisions and dead ends in the Decision journal as you go.'
       echo '- A stop condition in the goal file being met counts: set "status: paused", report honestly, and stop.'

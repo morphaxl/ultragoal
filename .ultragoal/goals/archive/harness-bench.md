@@ -1,6 +1,6 @@
 ---
 slug: harness-bench
-status: active
+status: abandoned
 kind: task
 budget: 40
 session: dac81d85-0391-4177-b6ec-c935b38ff5e4
@@ -28,12 +28,15 @@ Build ultragoal's self-measurement instrument and record the first baseline: a b
   - evidence: grep -> 21 distinct URLs; verifier confirmed 21 ≥ 10
 - [x] 3 seeded tasks exist, each with setup, brief, and standalone end-state check that fails on the freshly seeded repo — check: `node bench/run.mjs --selftest` exits 0 and prints one PASS line per task
   - evidence: `node bench/run.mjs --selftest` -> exit 0; csv-stats 2/9→9/9, slugify 3/12→12/12, todo-json 4/7→7/7; verifier re-ran and confirmed
-- [ ] Runner completes a paired smoke run and emits complete rows — check: smoke results TSV has header `task	arm	passes	checks	turns	tokens	model	harness_commit` and ≥2 data rows
+- [x] Runner completes a paired smoke run and emits complete rows — check: smoke results TSV has header `task	arm	passes	checks	turns	tokens	model	harness_commit` and ≥2 data rows
+  - evidence: smoke.tsv header byte-exact, 2 complete rows (vanilla 9/9 in 6 turns/107k tokens; ultragoal 9/9 in 41 turns/1.21M tokens); verifier confirmed rows against raw logs and real commits
 - [ ] Baseline complete: 18 runs recorded — check: `awk 'NR>1' bench/results/baseline.tsv | wc -l` = 18 with all 3 tasks × both arms × 3 reps present
 - [ ] bench/BASELINE.md summarizes per-task pass rate, turns, and tokens for both arms with spread, and records the pinned harness commit + model — check: file has the summary table and a hash that `git cat-file -t` confirms is a commit
 - [ ] Engine untouched and healthy — check: `bash tests/gate-test.sh` exits 0 with ≥47 passed; `claude plugin validate .` passes; `node --check installer/cli.mjs` and `node --check bench/run.mjs` exit 0
-- [ ] Re-run guide exists — check: bench/README.md contains the exact baseline re-run command and the methodology summary
-- [ ] ≥3 rejected design decisions in the Decision journal with reasons — check: `awk '/^# Decision journal/,/^# Native fallback/' .ultragoal/goals/active/harness-bench/goal.md | grep -c 'rejected:'` ≥ 3
+- [x] Re-run guide exists — check: bench/README.md contains the exact baseline re-run command and the methodology summary
+  - evidence: README documents `node bench/run.mjs --baseline`, the selftest gate, crash re-run command, and a 6-point methodology section; verifier cross-checked against the runner's dispatch code
+- [x] ≥3 rejected design decisions in the Decision journal with reasons — check: `awk '/^# Decision journal/,/^# Native fallback/' .ultragoal/goals/active/harness-bench/goal.md | grep -c 'rejected:'` ≥ 3
+  - evidence: scoped awk count -> 4 rejected: lines, each with a concrete reason; verifier confirmed
 - [ ] VERIFIER: independent sign-off recorded in the Verification log
 
 # Stop conditions
@@ -55,6 +58,11 @@ Build ultragoal's self-measurement instrument and record the first baseline: a b
 - 2026-06-11 rejected: `--max-turns` run cap — flag doesn't exist in this CLI version; per-run wall-clock timeout (25 min, SIGKILL) + the ultragoal arm's own goal budget serve instead.
 - 2026-06-11 rejected: shipping graders inside the seeded sandboxes — agents could read or game them (StrongDM lesson); check.sh lives in bench/tasks/ and runs against the sandbox from outside.
 - 2026-06-11 rejected: rows for infrastructure failures — a crashed/unparseable run writes NO row and is re-run via single-run mode, keeping baseline.tsv a record of completed measurements only.
+- 2026-06-11 product observation (for a future tangent, not this goal): while the worker waits on long background work, the gate forces near-empty polling turns — the loop has no "blocked on background process" affordance. Pairs with the deferred events/budget-visibility ideas from the June harness memo.
+- 2026-06-11 defect found by verifier, fixed: run logs lacked a suite prefix, so the baseline suite overwrote smoke's raw vanilla log before it could be preserved (that raw log is lost; smoke.tsv row stands, validated against the log before the overwrite). run.mjs now prefixes logs with the suite name; smoke's ultragoal raw log was copied intact.
+- 2026-06-11 rubric-hash change note (gate integrity prompt): the only rubric edits are box-flips + evidence lines on items the verifier passed (1–4, 8, 9); no check text or threshold changed. Final sign-off re-verifies all items against the final hash, as planned.
+- 2026-06-11 paused while the 18-run baseline suite executes in the background (~90 min wall): the gate's forced turns would burn the budget on idle polls. A completion monitor is armed in-session; on its event the goal flips back to active and items 5–7, 10 complete. Not blocked on the user; nothing abandoned.
+- 2026-06-11 abandoned: owner chose to replace this goal mid-baseline with a cost-optimization experiment (the bench's own early data — ~10× ultragoal-arm token overhead at no quality delta on these tasks — made cost the priority). Salvaged: the instrument itself is complete, committed (8572d47), selftested and smoke-validated; 5 of 18 baseline rows recorded in bench/results/baseline.tsv (all solving, vanilla ~131–157k tokens, ultragoal 1.20M/1.64M); suite and monitor killed cleanly, no orphan agent processes. Items 1–4, 8, 9 were verifier-passed; items 5–7, 10 (full baseline, BASELINE.md, final sign-off) intentionally not completed — the successor experiment goal subsumes baseline measurement as its own protocol step.
 
 # Native fallback
 /goal all rubric items in .ultragoal/goals/active/harness-bench/goal.md are checked with evidence and the verification log ends with ULTRAGOAL-VERIFIED: PASS, or stop after 40 turns
@@ -72,3 +80,17 @@ Scope: interim verification of rubric items 1–3 only (items 4–10 not claimed
 Note: bench/, docs/research/harness-eval-2026-06.md, and goal logs are currently untracked (outside the pinned harness surface — permitted; flagging for later items that reference the harness commit from results rows).
 
 ULTRAGOAL-VERIFIED: PASS rubric=1613333547
+
+## Verification — 2026-06-11
+Scope: interim verification of rubric items 4, 8, 9 only (items 1–3 previously verified PASS; items 5–7 and 10 not claimed, not graded; baseline suite running in background, not graded). Goal remains incomplete.
+| Rubric item | Command run | Result | Verdict |
+|---|---|---|---|
+| 4. Smoke run rows | `cat -et bench/results/smoke.tsv` | header exactly `task<TAB>arm<TAB>passes<TAB>checks<TAB>turns<TAB>tokens<TAB>model<TAB>harness_commit`; 2 complete data rows, one per arm (csv-stats vanilla 9/9, csv-stats ultragoal 9/9); ultragoal row matches raw log exactly (41 turns / 1208646 tokens); both harness_commit values (`e36367e`, `8572d47`) are real commits per `git cat-file -t` | PASS — scoped |
+| 8. Re-run guide | read bench/README.md; `grep -nE -- '--baseline...' bench/run.mjs` | README gives `node bench/run.mjs --baseline` (matches run.mjs usage and writes bench/results/baseline.tsv), plus --selftest and single-run crash re-run command; "Methodology, in brief" section summarizes arms, seeding, grader isolation, token accounting, small-N stats | PASS — scoped |
+| 9. Rejected decisions | `awk '/^# Decision journal/,/^# Native fallback/' $GOAL \| grep -c 'rejected:'` | 4 ≥ 3; each rejected line carries a concrete reason | PASS — scoped |
+| Constraint: engine unchanged | `git diff --stat e36367e -- scripts skills agents hooks installer` + `git status --porcelain` same paths | both empty | no violation |
+| Constraint: sandboxes outside repo | read bench/run.mjs:45 | `mkdtempSync(join(tmpdir(), ...))` — OS tmpdir, never the product repo | no violation |
+
+Finding (non-blocking): run.mjs log names (`${task}-${arm}-r${rep}`) carry no suite prefix, so the running baseline overwrote the smoke run's vanilla raw log (smoke row 6/106602 vs current log 7/130711, which matches baseline.tsv's own vanilla row). Smoke rows are corroborated, but per-suite raw logs are not preserved across suites.
+
+ULTRAGOAL-VERIFIED: PASS rubric=2998305527

@@ -5,3 +5,5 @@ date	slug	kind	outcome	turns	verifier_fails	budget
 2026-06-11	harness-research	task	done	1	0	30
 2026-06-11	robustness-research	task	abandoned	0	0	30
 2026-06-11	multiagent-orchestration	task	done	1	0	35
+2026-06-11	harness-bench	task	abandoned	8	0	40
+2026-06-11	cost-ratchet	experiment	abandoned	0	0	35

@@ -408,7 +408,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | memory-sharing | ${picks.memory} |
 | verification | ${picks.verification} |
 | default-budget | ${prev.budget || '25'} |
-| verification-cadence | ${prev.cadence || 'every-claim'} |
+| verification-cadence | ${prev.cadence || 'final'} |
 | interview-depth | ${prev.interview || 'adaptive'} |
 `
   );

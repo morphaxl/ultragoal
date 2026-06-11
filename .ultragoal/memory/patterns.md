@@ -17,6 +17,8 @@
 
 - Final sign-off sequencing: flip the VERIFIER rubric box (with evidence) BEFORE the last verifier dispatch — the box flip changes the rubric hash and voids any verdict issued first. Sequence that works: verify all items → check boxes → flip VERIFIER box → one final verifier pass signs the final hash. [VERIFIED S7 · first verdict (rubric=1271038965) voided by the flip; re-sign (rubric=1351950032) released the gate · 2026-06-11]
 
+- Transcript decomposition beats live A/B for cost analysis: finished agent runs leave full per-message usage in ~/.claude/projects/<cwd-slug>/*.jsonl (+ subagents/) — summing usage fields located the harness's cost structure (messages × context, ceremony prose, verifier share) in one free pass, where each live bench measurement costs ~1.2M tokens/run. Decompose first; measure only what judgment can't settle. [VERIFIED S7 · smoke-run decomposition drove the cost findings · 2026-06-11]
+
 ---
 
 ## Evidence log
