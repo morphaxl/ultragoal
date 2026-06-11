@@ -131,6 +131,13 @@ unchecked="$(printf '%s\n' "$rubric" | grep '^[[:space:]]*- \[ \]' 2>/dev/null)"
 unchecked_count="$(printf '%s' "$unchecked" | grep -c '\[ \]' 2>/dev/null)"
 case "$unchecked_count" in '' | *[!0-9]*) unchecked_count=0 ;; esac
 
+# evidence ledger: every checked box should carry an evidence line beneath it
+no_evid="$(printf '%s\n' "$rubric" | awk '
+  /^[[:space:]]*- \[x\]/ { if (pend) miss++; pend=1; next }
+  pend { if ($0 !~ /evidence:/) miss++; pend=0 }
+  END { if (pend) miss++; print miss+0 }' 2>/dev/null)"
+case "$no_evid" in '' | *[!0-9]*) no_evid=0 ;; esac
+
 verified=0
 last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
 case "$last_verdict" in
@@ -149,6 +156,9 @@ if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
       printf '%s\n' "$unchecked"
     else
       echo "All rubric boxes are checked, but there is no valid verification: the last verdict must be exactly \"ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash\" (issued by the verifier against the current rubric)."
+    fi
+    if [ "$no_evid" -gt 0 ]; then
+      echo "$no_evid checked rubric item(s) have no evidence line. Under each checked box record \"  - evidence: \\\`command\\\` -> key output\" — the verifier treats a checked box without evidence as an automatic FAIL."
     fi
     if [ "$kind" = "experiment" ]; then
       cat <<'EOF'

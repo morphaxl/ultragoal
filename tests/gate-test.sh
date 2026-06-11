@@ -107,6 +107,10 @@ check "experiment kind -> ratchet protocol" 2 "$RC" "ratchet" "$ERR"
 
 fresh; goalfile active; check_all_boxes; run_gate
 check "checked, no verdict -> block" 2 "$RC" "no valid verification" "$ERR"
+check "checked without evidence -> nagged" 2 "$RC" "no evidence line" "$ERR"
+awk '{print} /- \[x\]/ {print "  - evidence: `true` -> ok"}' "$GOAL" > "$GOAL.t" && mv "$GOAL.t" "$GOAL"
+run_gate
+grep -q "no evidence line" "$ERR" && check "checked WITH evidence -> no nag" 0 1 || check "checked WITH evidence -> no nag" 0 0
 
 fresh; goalfile active; check_all_boxes; run_gate  # seed hash file
 H="$(rubric_hash)"

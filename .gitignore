@@ -1,5 +1,5 @@
 # downloaded reference docs (Anthropic's content — linked from DESIGN.md, not redistributed)
-research/
+/research/
 
 # local state if the plugin is ever dogfooded in this repo
 .ultragoal/goals/.turns

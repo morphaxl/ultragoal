@@ -46,6 +46,6 @@ Assemble the block from [claude-md-block.md](claude-md-block.md): the fixed memo
 
 ## 4. Optional memory bootstrap
 
-If this repo has history worth mining (existing docs, old Claude transcripts, a long git log), offer once: "Want me to bootstrap memory from existing history? I'll use subagents to identify core themes and lessons and store them in `.ultragoal/memory/`." Run it only if they say yes, following the `ultragoal:remember` protocol with `[UNVERIFIED]` tags for anything not directly checkable.
+If this repo has history worth mining (existing docs, postmortems, devlogs, a long git log), offer once: "Want me to bootstrap memory from existing history? I'll use subagents to identify core themes and lessons and store them in `.ultragoal/memory/`." On yes: dispatch parallel subagents, one per source kind (git log for recurring fix patterns and reverted approaches; docs/postmortems for known gotchas; configs for non-obvious invariants), then file the distilled lessons per the `ultragoal:remember` protocol — tagged `[READ · source]` or `[INFERRED · confidence]`, never `[VERIFIED]` (nothing was re-run), each with an evidence line naming where it came from. A seeded memory starts the very first goal warm instead of cold.
 
 Finish by confirming what was created and pointing at the next step: `/ultragoal:goal <brain dump>`.

@@ -16,6 +16,8 @@
 - An apostrophe inside `${var:-default}` in double quotes corrupts bash parsing (broke session-context.sh once)
 - clack `hint:` text renders inside parens — never put parens in hints
 - When adding a knob, grep user-facing copy for hardcoded counts ("4 questions")
+- gitignore patterns without leading `/` match at any depth — `git check-ignore` new doc dirs (shadowed docs/research/ once)
+- rubric count-checks that grep the goal file self-match the rubric's own text — scope to the section
 
 ## Hot files
 - `scripts/goal-gate.sh` ⇄ `tests/gate-test.sh` — change together, always

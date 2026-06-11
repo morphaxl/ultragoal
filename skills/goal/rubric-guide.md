@@ -27,11 +27,22 @@
 - A check command that doesn't exist in this repo or can't run locally
 - Items the worker can satisfy by editing the check instead of the work (pin the check: exact command, exact path, exact threshold)
 
+9. **Checks emit one decisive line.** Prefer commands whose output settles the item at a glance — an exit code, a single number, a PASS/FAIL. Wrap noisy commands (`cmd > /tmp/x.log 2>&1 && echo PASS || echo FAIL`): the gate feeds check context back into the loop every turn, and raw dumps poison it. A flawed or noisy signal gets faithfully optimized — the loop is only as honest as what the check prints.
+
 ## Shape of a good item
 
 ```
 - [ ] <claim stated as a fact about the end state> — check: `<exact command>` <expected result>
 ```
+
+And once completed, the worker appends its evidence directly underneath:
+
+```
+- [x] <claim> — check: `<exact command>` <expected result>
+  - evidence: `<command actually run>` -> <key output line> (turn N)
+```
+
+The verifier audits this ledger before re-running anything; a checked box with no evidence line is an automatic FAIL.
 
 ## Worked example (performance goal)
 

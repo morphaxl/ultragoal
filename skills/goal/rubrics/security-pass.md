@@ -3,6 +3,8 @@
 Use when: hardening a web app's security or auditing auth — target is the automatable subset of OWASP ASVS 5.0 Level 2 (the right level for apps handling personal data) plus OWASP Top 10:2025 awareness.
 Kind: task
 
+Model note (Claude Fable 5): its safety classifiers target offensive cybersecurity and can false-positive on benign hardening work — a turn can end in a refusal mid-goal. Keep the goal framed defensively (audit, harden, fix — never exploit-building or PoC crafting), lean on standard tool runs (semgrep, osv-scanner, gitleaks) for the adversarial-flavored checks, and if refusals persist, run this goal on Claude Opus 4.8.
+
 ## Skills to pair
 Security review skills if present (e.g. Claude Code's built-in `security-review`). Find more via `find-skills` on skills.sh.
 

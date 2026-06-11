@@ -25,6 +25,10 @@ relevant files, links. List every assumption you made on the user's behalf.>
 - [ ] <claim about the end state> — check: `<exact command>` <expected result>
 - [ ] ...
 - [ ] VERIFIER: independent sign-off recorded in the Verification log
+<!-- when the worker checks a box, it appends an evidence line directly under it:
+       - evidence: `command run` -> key output line (turn N)
+     a checked box with no evidence line is an automatic verifier FAIL -->
+
 
 # Stop conditions
 - <turn budget> turns reached, or <item> fails verification 3 consecutive times

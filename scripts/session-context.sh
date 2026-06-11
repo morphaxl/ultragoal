@@ -79,7 +79,7 @@ if [ "$s" -ge 10 ]; then
   if [ "$evidence" -gt 0 ]; then
     echo "Memory upkeep: $s sessions since the last compaction — when convenient, suggest /ultragoal:compact to the user."
   else
-    echo "Memory upkeep: $s sessions in and the project memory has no evidence entries yet — lessons are being lost. Goal completions distill automatically; after substantive NON-goal work, run the ultragoal:remember protocol (or suggest it to the user). Compaction isn't needed until memory has content."
+    echo "Memory upkeep: $s sessions in and the project memory has no evidence entries yet — lessons are being lost. Goal completions distill automatically; after substantive NON-goal work, run the ultragoal:remember protocol (or suggest it to the user). A repo with history can also be seeded once via ultragoal:setup's memory bootstrap. Compaction isn't needed until memory has content."
   fi
 fi
 

@@ -6,6 +6,8 @@ You talk to it like a person — a messy, unedited voice note is fine. It asks t
 
 Underneath, this is the workflow Anthropic's engineers describe using with Fable 5: don't steer the model prompt by prompt — **design a loop where it self-corrects against honest feedback and manages its own memory.** ultragoal packages that whole system into a plugin you install with one command.
 
+Every mechanism in the loop is research-backed — verifier design, evidence ledgers, rubric architecture, memory provenance all trace to published results from Anthropic, DeepSeek, Alibaba, ByteDance, Tencent, and academic agent-systems work. The full mechanism→evidence map lives in [docs/research-foundations.md](docs/research-foundations.md), fed by dated research sweeps in [docs/research/](docs/research/).
+
 ```
   BRIEF ──► GOAL ──► LOOP ──► VERIFY ──► DISTILL
    │          │        │         │           │
