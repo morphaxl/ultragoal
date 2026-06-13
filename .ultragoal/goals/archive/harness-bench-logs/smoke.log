@@ -1,5 +1,0 @@
-[bench] start csv-stats/vanilla/r1 (sandbox /var/folders/f_/g5ryscn96hs85999x4lr0cf00000gn/T/ugbench-csv-stats-FR1Z5t)
-[bench] start csv-stats/ultragoal/r1 (sandbox /var/folders/f_/g5ryscn96hs85999x4lr0cf00000gn/T/ugbench-csv-stats-0mYtu2)
-[bench] done csv-stats/vanilla/r1: 9/9 checks, 6 turns, 106602 tokens, 1.1m
-[bench] done csv-stats/ultragoal/r1: 9/9 checks, 41 turns, 1208646 tokens, 9.2m
-[bench] suite complete: 2/2 runs recorded -> /Users/shamil/Desktop/Shamil/ultragoal/bench/results/smoke.tsv
