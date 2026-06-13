@@ -3,6 +3,8 @@
 Use when: building or changing a feature in a Next.js or React app — success is "exists and works".
 Kind: task
 
+When the feature adds or moves a page/route/nav entry, spec it with a **"What you'll see" block first** (nav/layout map + screen inventory + ASCII wireframe + flow + stated assumptions — see the goal skill's Phase 4), and have the user confirm the picture before building — *where* a feature is reached from (nav bar, menu, header) is the decision most often lost to prose.
+
 ## Skills to pair
 If available in this session (find more on skills.sh): `vercel-react-best-practices`, `vercel-composition-patterns` — apply them *while* building, not as a cleanup pass.
 
@@ -13,6 +15,7 @@ If available in this session (find more on skills.sh): `vercel-react-best-practi
 - [ ] Production build succeeds — check: `npx next build` exits 0 (also catches client-hooks-in-server-components)
 - [ ] No hydration errors on touched routes — check: Playwright against `next build && next start`, collecting `page.on('console')` + `page.on('pageerror')`, zero matches for `/hydrat(ion|e)/i` or React errors #418/#423/#425
 - [ ] Touched UI renders its key elements visibly — check: Playwright loads the route and asserts the change's target element is visible with a non-zero box (`await expect(page.getByTestId('...')).toBeVisible()` plus a `boundingBox()` with width/height > 0) — present-in-DOM is not the same as rendered; this catches collapsed/0-height/clipped containers that the build and hydration checks pass
+- [ ] New or moved pages are reachable where the user expects — check: for any added/relocated route, assert its entry point (nav link, menu item, header action) is present and visible in the rendered layout — Playwright finds the link in the nav and clicking it lands on the route; a page that only resolves by typing the URL passes a render check while being undiscoverable. Placement must match the spec's "What you'll see" block.
 - [ ] Server/client boundary respected — check: server-only modules import the `server-only` package (build fails if client-imported); `grep -r "NEXT_PUBLIC_" .env*` reviewed for secret leaks
 - [ ] Error and loading states exist for new route segments — check: `find app -name "error.tsx"` and `find app -name "loading.tsx"` (or `<Suspense>`) cover every async segment touched
 - [ ] VERIFIER: independent sign-off recorded in the Verification log

@@ -29,6 +29,7 @@
 - Items the worker can satisfy by editing the check instead of the work (pin the check: exact command, exact path, exact threshold)
 - Count-checks that grep the goal file itself — they match the rubric's own text, evidence lines, and the verifier's appended tables, silently inflating the count. Scope them to their section with an awk range (`awk '/^# Section/,/^# Next/'`)
 - A behavioral or visual claim verified only by a static proxy — "renders" / "visible" / "shows N" checked with `grep` / `tsc` / `eslint` / `build` / unit-test. Either give it a real runtime observation (screenshot, rendered-size assertion, request against the running app) or split it into a `[x]` "wired" item and a separate `[ ]` "renders visibly" item that stays unchecked until something actually observes it. Never let *wired* masquerade as *works* — that is exactly how an empty-but-correctly-coded component ships.
+- A new user-facing destination with no check on *how the user reaches it*. "The screen renders" ≠ "the screen is reachable" ≠ "the entry point is where the user expects it." A new or moved screen needs an item asserting its **placement** — which navigator / tab / menu it lives in, in **every** layout variant the app ships (e.g. both a native and a JS tab bar) — not just that the route exists. A Messages screen reachable only by deep link, while the tab bar never shows it, passes "renders" and fails the user (see the wired/renders/**reachable** split below).
 
 9. **Checks emit one decisive line.** Prefer commands whose output settles the item at a glance — an exit code, a single number, a PASS/FAIL. Wrap noisy commands (`cmd > /tmp/x.log 2>&1 && echo PASS || echo FAIL`): the gate feeds check context back into the loop every turn, and raw dumps poison it. A flawed or noisy signal gets faithfully optimized — the loop is only as honest as what the check prints.
 
@@ -47,16 +48,17 @@ And once completed, the worker appends its evidence directly underneath:
 
 The verifier audits this ledger before re-running anything; a checked box with no evidence line is an automatic FAIL.
 
-### Wired vs. renders — split, don't conflate
+### Wired vs. renders vs. reachable — split, don't conflate
 
-When the strongest check you can run is static but the claim is behavioral, split the item instead of checking the whole thing off on a proxy:
+When the strongest check you can run is static but the claim is behavioral, split the item instead of checking the whole thing off on a proxy. And for a new destination, add a third layer the other two never prove — that the user can actually *get there*:
 
 ```
 - [x] CreatorsRail mounted and fed data — check: `grep -n CreatorsRail screen.tsx` + `tsc --noEmit` exits 0
 - [ ] CreatorsRail renders its cards visibly (non-zero height) — check: simulator/Playwright screenshot of the screen, or assert the rail node's measured height > 0
+- [ ] Messages is a visible bottom-tab item in EVERY tab-bar variant — check: enumerate the rendered nav config (or screenshot the bar) and assert the Messages tab is present in both the native and JS bars; the route existing is not the tab showing
 ```
 
-The second item stays `[ ]` until an actual render confirms it. A manual device step counts as that confirmation — but an agent-run screenshot smoke (a non-interactive capture of the screen; the UI feature templates carry one) catches the failure turns earlier and for free, and observing a screen is *not* driving a flow.
+Each item stays `[ ]` until something actually confirms its layer — *wired* (code references it), *renders* (a pixel is drawn), *reachable* (the entry point is in the nav where the user expects it). A manual device step counts as confirmation, but an agent-run screenshot smoke (a non-interactive capture; the UI feature templates carry one) catches the failure turns earlier and for free, and observing a screen is *not* driving a flow. The reachable layer is the one a "renders" check silently skips — and the one that ships a screen nobody can find.
 
 ## Worked example (performance goal)
 
