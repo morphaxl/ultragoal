@@ -74,11 +74,20 @@ EOF
   exit 0
 fi
 
-budget="$(read_field "$GOAL" budget)"
-case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
 slug="$(read_field "$GOAL" slug)"; [ -n "$slug" ] || slug="active goal"
 kind="$(read_field "$GOAL" kind)"; [ -n "$kind" ] || kind="task"
-verify="$(read_field "$GOAL" verify)"; [ "$verify" = "off" ] || verify="on"
+verify="$(read_field "$GOAL" verify)"
+case "$verify" in off|panel) ;; *) verify="on" ;; esac
+
+# ---- budget: gate-checked turns ------------------------------------------------
+# The budget counts the gate's native, unfakeable event: a blocked stop (a turn).
+# It is a checkpoint trigger, not a spend meter — the goal skill's depth tiers map
+# to it (quick ~10 / standard 25 / deep 60). Token accounting deliberately does
+# NOT live here: transcript usage lines are duplicated per content block (~2.7x
+# over-count measured), the layout is undocumented, and a fail-open script fails
+# silently. Measure spend offline via transcript decomposition when tuning.
+budget="$(read_field "$GOAL" budget)"
+case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
 
 # ---- rubric integrity (hash frozen at arm; change invalidates verdicts) -----
 hash_file="$GDIR/.rubric-hash"
@@ -99,7 +108,7 @@ if [ -n "$rubric_hash" ]; then
   fi
 fi
 
-# ---- turn accounting --------------------------------------------------------
+# ---- turn accounting ----------------------------------------------------------
 turns_file="$GDIR/.turns"
 turns=0
 [ -r "$turns_file" ] && turns="$(tr -dc '0-9' < "$turns_file" 2>/dev/null)"
@@ -107,19 +116,28 @@ case "$turns" in '') turns=0 ;; esac
 turns=$((turns + 1))
 printf '%s' "$turns" > "$turns_file" 2>/dev/null || true
 
-# Budget exhausted: nudge once, then auto-pause so state and behavior can't diverge.
-if [ "$turns" -gt $((budget + 1)) ]; then
-  tmp="$GOAL.tmp.$$"
-  if sed 's/^status:[[:space:]]*active/status: paused/' "$GOAL" > "$tmp" 2>/dev/null; then
-    mv "$tmp" "$GOAL" 2>/dev/null || rm -f "$tmp" 2>/dev/null
-  else
-    rm -f "$tmp" 2>/dev/null
+used_str="turn $turns/$budget"
+over=0; [ "$turns" -gt "$budget" ] && over=1
+
+# Budget exhausted: warn once; if the warning is ignored, pause the goal and
+# demand an honest wrap-up — never go silent on the user.
+warnfile="$GDIR/.budget-warned"
+if [ "$over" = 1 ]; then
+  if [ -e "$warnfile" ]; then
+    tmp="$GOAL.tmp.$$"
+    if sed 's/^status:[[:space:]]*active/status: paused/' "$GOAL" > "$tmp" 2>/dev/null; then
+      mv "$tmp" "$GOAL" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+    else
+      rm -f "$tmp" 2>/dev/null
+    fi
+    cat >&2 <<EOF
+ULTRAGOAL GATE — the budget warning was not acted on, so the gate has PAUSED goal "$slug" itself ($used_str). Before stopping: tell the user plainly that the goal is paused at its budget, and report where each rubric item stands — audit every claim against a tool result from this session. Raising "budget:" in the goal file and setting "status: active" resumes it.
+EOF
+    exit 2
   fi
-  exit 0
-fi
-if [ "$turns" -gt "$budget" ]; then
+  : > "$warnfile" 2>/dev/null || true
   cat >&2 <<EOF
-ULTRAGOAL GATE — turn budget reached ($((turns - 1))/$budget) for "$slug".
+ULTRAGOAL GATE — budget reached for "$slug" ($used_str).
 Do exactly one of the following, then stop:
 1. Report honestly where things stand against each rubric item (audit every claim against a tool result from this session), set "status: paused" in the goal file, and tell the user what remains.
 2. If you are genuinely close and continuing is clearly justified, raise "budget:" in the goal file and keep working.
@@ -127,6 +145,7 @@ If you do neither, the gate will pause the goal itself next turn.
 EOF
   exit 2
 fi
+rm -f "$warnfile" 2>/dev/null   # under budget (e.g. raised): a future exhaustion warns afresh
 
 # ---- rubric + verification state -------------------------------------------
 rubric="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null)"
@@ -136,27 +155,45 @@ case "$unchecked_count" in '' | *[!0-9]*) unchecked_count=0 ;; esac
 
 # evidence ledger: every checked box should carry an evidence line beneath it
 no_evid="$(printf '%s\n' "$rubric" | awk '
-  /^[[:space:]]*- \[x\]/ { if (pend) miss++; pend=1; next }
+  /^[[:space:]]*- \[[xX]\]/ { if (pend) miss++; pend=1; next }
   pend { if ($0 !~ /evidence:/) miss++; pend=0 }
   END { if (pend) miss++; print miss+0 }' 2>/dev/null)"
 case "$no_evid" in '' | *[!0-9]*) no_evid=0 ;; esac
 
 verified=0
-last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
-case "$last_verdict" in
-  *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) [ -n "$rubric_hash" ] && verified=1 ;;
-esac
-if [ "$verify" = "off" ] && [ "$unchecked_count" -eq 0 ]; then
-  verified=1
+panel_missing=""
+if [ "$verify" = "panel" ]; then
+  # Panel: the most recent verdict for EACH lens must be a PASS bound to the
+  # current rubric hash. A missing, failing, or stale lens blocks release.
+  if [ -n "$rubric_hash" ]; then
+    verified=1
+    for lens in checks refute constraints; do
+      lv="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | grep "lens=$lens" | tail -1)"
+      case "$lv" in
+        *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) ;;
+        *) verified=0; panel_missing="$panel_missing $lens" ;;
+      esac
+    done
+  fi
+else
+  last_verdict="$(grep 'ULTRAGOAL-VERIFIED:' "$GOAL" 2>/dev/null | tail -1)"
+  case "$last_verdict" in
+    *"ULTRAGOAL-VERIFIED: PASS"*"rubric=$rubric_hash"*) [ -n "$rubric_hash" ] && verified=1 ;;
+  esac
+  if [ "$verify" = "off" ] && [ "$unchecked_count" -eq 0 ]; then
+    verified=1
+  fi
 fi
 
 if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
   {
-    echo "ULTRAGOAL GATE — goal \"$slug\" is still active (turn $turns/$budget). Keep working."
+    echo "ULTRAGOAL GATE — goal \"$slug\" is still active ($used_str). Keep working."
     [ -n "$integrity_note" ] && echo "$integrity_note"
     if [ "$unchecked_count" -gt 0 ]; then
       echo "Remaining rubric items:"
       printf '%s\n' "$unchecked"
+    elif [ "$verify" = "panel" ]; then
+      echo "All rubric boxes are checked, but the panel verdict is incomplete (missing, failing, or stale:$panel_missing). The most recent verdict for each lens must be exactly \"ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash lens=<lens>\" for all three lenses: checks, refute, constraints."
     else
       echo "All rubric boxes are checked, but there is no valid verification: the last verdict must be exactly \"ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash\" (issued by the verifier against the current rubric)."
     fi
@@ -178,6 +215,8 @@ EOF
       echo '- Never check a rubric box without evidence from a command you ran this session.'
       if [ "$verify" = "off" ]; then
         echo '- Verification is OFF for this goal: your own command evidence suffices to check a box — the evidence must still be real and from this session.'
+      elif [ "$verify" = "panel" ]; then
+        echo '- Record evidence under each box as you check it. The FINAL sign-off is a PANEL: dispatch three ultragoal:verifier subagents in ONE message (parallel, so they stay mutually blind), assigning one lens each — checks, refute, constraints. Each appends its own lens-tagged verdict; the goal completes only when all three lenses PASS against the current rubric. Dispatch a single verifier earlier only for an item that already failed or looks shaky.'
       else
         echo '- Record evidence under each box as you check it, then dispatch the ultragoal:verifier subagent (fresh context) before finishing: it re-runs every check itself and appends its verdict to the goal file. Dispatch it earlier only for an item that already failed once or whose check looks shaky (or if config sets verification-cadence to every-claim). Only a valid PASS verdict bound to the current rubric completes the goal.'
       fi

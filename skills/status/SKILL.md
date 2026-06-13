@@ -1,6 +1,6 @@
 ---
 name: status
-description: Show the current ultragoal state — active goal, rubric progress, turn budget, memory health.
+description: Show the current ultragoal state — active goal, rubric progress, budget, memory health.
 ---
 
 Report the current ultragoal state for this project. Current data:

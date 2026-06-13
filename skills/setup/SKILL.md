@@ -7,15 +7,17 @@ Initialize (or reconfigure) ultragoal for this project. Takes about a minute.
 
 ## 1. Knobs
 
-Ask the user the five questions below in **one** AskUserQuestion call (recommended default first). If `.ultragoal/config.md` already exists, show current values and ask only what they want changed. If running non-interactively, take all defaults.
+Ask the user the seven questions below in **one** AskUserQuestion call (recommended default first). If `.ultragoal/config.md` already exists, show current values and ask only what they want changed. If running non-interactively, take all defaults.
 
-1. **Action mode** — proactive (default) / conservative
-2. **Communication** — lead-with-outcome (default) / detailed
-3. **Scope discipline** — elaborate-ok, polish welcome (default) / minimal
-4. **Memory sharing** — git-committed, team-shared (default) / local-only (gitignored)
-5. **Verification** — on (default: a fresh-context verifier must sign off before a goal finishes) / off (checked rubric + saved lessons suffice; faster, less rigorous)
+1. **Rigor** — how much scaffolding the harness wraps around the model; match it to model strength. **vanilla** (default — for strong models like Fable: the lean single-grader loop, no extras) / **standard** (bells & whistles: interim re-checks, pessimistic double-runs, research scouts, the background log monitor) / **max** (every recommended technique, for lower-intelligence models or release-grade stakes: 3-lens panel verification, every-claim cadence, multi-modal scout sweeps, deep interview, rubric variants). The goal skill reads this and shapes the whole loop; per-goal override by saying "max mode" / "vanilla" in a brief.
+2. **Action mode** — proactive (default) / conservative
+3. **Communication** — lead-with-outcome (default) / detailed
+4. **Scope discipline** — elaborate-ok, polish welcome (default) / minimal
+5. **Memory sharing** — git-committed, team-shared (default) / local-only (gitignored)
+6. **Verification** — on (default: a fresh-context verifier must sign off before a goal finishes) / off (checked rubric + saved lessons suffice; faster, less rigorous). Note: rigor=max sets this to a 3-verifier panel automatically.
+7. **Harness-feedback log** — off (default) / on. When on, and the user flags that the harness itself misbehaved, the model records a self-observation (which component failed, why, how to improve ultragoal) to a local `.ultragoal/harness-log.md`. Opt-in, local markdown only, never transmitted — sharing is user-initiated. On adds a small CLAUDE.md protocol snippet and seeds the log file; off adds nothing.
 
-Four more settings with sensible defaults — mention they exist in `config.md` rather than asking: default turn budget (25), verification cadence (final — one verifier pass at sign-off; "every-claim" verifies before each box for stricter, costlier loops), interview depth (adaptive — the goal skill sizes the interview to the goal's stakes and length; "quick" forces one batch, "deep" forces multi-round), and auto-update (on — the session hook refreshes the plugin pin in the background daily, since project-scoped installs never auto-update natively).
+Four more settings with sensible defaults — mention they exist in `config.md` rather than asking: default budget (25 gate-checked turns — the standard depth tier; the goal skill asks depth per goal as quick ~10 / standard 25 / deep 60+), verification cadence (final — one verifier pass at sign-off; "every-claim" verifies before each box for stricter, costlier loops), interview depth (adaptive — the goal skill sizes the interview to the goal's stakes and length; "quick" forces one batch, "deep" forces multi-round), and auto-update (on — the session hook refreshes the plugin pin in the background daily, since project-scoped installs never auto-update natively).
 
 **Workspace placement:** if this directory sits inside a larger workspace that holds several repos, offer to put `.ultragoal/` at the workspace root instead — the hooks walk up from the current repo to the nearest `.ultragoal/`, so one shared brain can serve all the nested repos.
 
@@ -26,6 +28,7 @@ Create (don't overwrite anything that exists):
 ```
 .ultragoal/
 ├── config.md            ← from [config-template.md](config-template.md), with chosen knobs
+├── harness-log.md       ← ONLY if harness-log = on; from the template in [memory-templates.md](memory-templates.md)
 ├── goals/archive/.gitkeep
 └── memory/
     ├── MEMORY.md        ← from [memory-templates.md](memory-templates.md)

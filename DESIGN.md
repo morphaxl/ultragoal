@@ -2,6 +2,8 @@
 
 > **One-line pitch:** The workflow Anthropic engineers actually use with Fable 5 — brief, goal, loop, verify, distill — packaged as a one-command Claude Code plugin.
 
+> **2026-06-12 — design-era snapshot, kept for rationale.** Shipped behavior has moved past parts of this document: goals live per-session in `goals/active/<slug>/` (not a single `active.md`), setup asks seven knobs (incl. rigor and the opt-in harness-feedback log), the shipped scope default is polish-welcome, and budgets are chosen as depth tiers (quick/standard/deep) when arming. README.md and AGENTS.md describe what ships today; read this file for the why, not the what.
+
 This design distills three primary sources into one cohesive product:
 
 1. **Lance Martin's "Designing loops with Fable 5"** (X article, June 9 2026) — loop design over direct prompting; `/goal` + Outcomes; rubric design as *the* skill; verifier subagents over self-critique; the fail → investigate → verify → distill → consult memory progression.
@@ -206,6 +208,7 @@ All knobs are **official Anthropic prompt blocks, verbatim**, selected at first-
 
 | Knob | Options (default bold) | Source text injected |
 |---|---|---|
+| Rigor | **vanilla** / standard / max | meta-knob: the goal skill expands it into the loop's verification/scout/interview shape — see below |
 | Action mode | **proactive** / conservative | `<default_to_action>` vs `<do_not_act_before_instructions>` (best-practices doc) |
 | Communication | **lead-with-outcome** / detailed | Fable-5 guide readability + brevity blocks |
 | Scope discipline | **minimal** / elaborate-ok | anti-overengineering block (Fable-5 guide §effort) |
@@ -216,11 +219,21 @@ All knobs are **official Anthropic prompt blocks, verbatim**, selected at first-
 
 Always-on regardless of knobs (they're not preferences, they're how Fable 5 works best): grounded progress claims, parallel subagent usage, investigate-before-answering, memory protocol, autonomous-loop reminder during active goals.
 
+### Rigor — scaling the harness to model strength
+
+`rigor` is the one knob that reshapes the loop rather than injecting a prompt block. It exists because the advanced techniques (panel verification, multi-modal sweeps, mid-trajectory monitoring) measurably help a *weak* model but are over-prescriptive on a strong one — the Fable-5 guide's own warning. Rather than choose, ultragoal makes the scaffolding a dial:
+
+- **vanilla** (default, strong models): single fresh-context verifier at the final sign-off, no scouts, no monitor — the article's lean recipe, byte-for-byte today's behavior.
+- **standard**: single grader + interim re-checks on shaky items + pessimistic double-runs + 2–4 research scouts + background log monitor.
+- **max** (weaker models / release stakes): 3-lens panel verification (`verify: panel` — checks/refute/constraints, all PASS), every-claim cadence, multi-modal scout sweeps + completeness critic, deep interview, rubric variants.
+
+The separation that keeps this from bloating the engine: the **gate** understands only `verify: off | on | panel` (deterministic, ~15 lines for the panel branch); the **goal skill** reads `rigor` and expands it into concrete choices. Intelligence lives in the prose that loads on invoke, not in always-on context or the shell. Per-goal override: "max mode" / "vanilla" in a brief. Evidence for the max techniques: aspect-lens ensembles (+10–20%), guard-agent mid-trajectory checks beating end-only on noisy work, MacNet's 2–3-judge saturation (the panel is exactly 3) — all in [docs/research-foundations.md](docs/research-foundations.md).
+
 ---
 
 ## 6. What we deliberately did NOT build
 
-- **No swarm orchestration / 100 agents** — ruflo's failure mode. One worker + one verifier + Explore scouts is the article's actual recipe.
+- **No swarm orchestration / 100 agents** — ruflo's failure mode. The recipe stays one worker + a verifier (single, or a 3-lens panel at rigor=max) + Explore scouts; the panel is capped at 3 because the ensemble gain saturates there.
 - **No bash wrapper loop** (Ralph-original style) — the Stop hook is in-session, cancellable, permission-aware.
 - **No custom issue tracker / PM layer** (beads/CCPM territory) — goals are files; git is the tracker.
 - **No model-side "echo your reasoning"** anywhere — triggers Fable 5's `reasoning_extraction` refusals (guide §scaffolding).

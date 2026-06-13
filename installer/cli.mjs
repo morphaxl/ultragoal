@@ -288,6 +288,25 @@ const KNOBS = {
       { value: 'off', label: 'Off', hint: 'faster: checked rubric + saved lessons suffice, no verifier pass' },
     ],
   },
+  rigor: {
+    question: 'How much scaffolding should the harness wrap around the model? (match to model strength)',
+    options: [
+      { value: 'vanilla', label: 'Vanilla', hint: 'recommended for strong models (Fable) — the lean single-grader loop' },
+      { value: 'standard', label: 'Standard', hint: 'bells & whistles: interim re-checks, double-runs, scouts, log monitor' },
+      { value: 'max', label: 'Max', hint: 'for weaker models / release stakes: 3-lens panel, every-claim, multi-modal sweeps' },
+    ],
+  },
+  harnessLog: {
+    question: 'Keep a local harness-feedback log? (when you flag a harness mistake, ultragoal records why it failed + how to improve)',
+    options: [
+      { value: 'off', label: 'Off', hint: 'recommended default — no log kept' },
+      { value: 'on', label: 'On', hint: 'opt-in: writes .ultragoal/harness-log.md locally; never transmitted, sharing is manual' },
+    ],
+    blocks: {
+      on:
+        "## Harness feedback log (ultragoal)\n\nWhen the user signals the harness itself misbehaved — a wrong default, a misleading interview question, a missing or weak rubric check, ceremony on a task that didn't need a goal, a gate that fired wrongly, an undersized budget — append a self-observation to `.ultragoal/harness-log.md` (create it if missing). Reason about ultragoal, not the project: which harness component was at fault (rubric / gate / verifier / interview / skill-prompt / budget / memory), why it let the mistake through, and the concrete change to ultragoal that would prevent that class. One entry per incident: `## [date] <title>` then `- trigger:` / `- component:` / `- why:` / `- improvement:` / `- provenance: [USER-FEEDBACK · date]`. Keep it distinct from project memory — a harness shortcoming goes here; a project dead end goes in `failures.md`; a project fact/correction goes in memory with `[USER-CORRECTION]`. It is local markdown only — never transmitted; sharing is yours to initiate.",
+    },
+  },
 };
 
 const FIXED_CORE = `<!-- ultragoal:start — managed block; edit knobs via /ultragoal:setup or by hand -->
@@ -366,6 +385,21 @@ const MEMORY_FILES = {
 `,
 };
 
+const HARNESS_LOG_TEMPLATE = `# Harness feedback log
+
+<!-- ultragoal's own failure observations, for improving the plugin. OPT-IN via the harness-log knob.
+     Local markdown only — never transmitted; you choose whether to share it.
+     Distinct from project memory: harness shortcomings go HERE; project dead ends go in
+     memory/failures.md; project facts/corrections go in memory with [USER-CORRECTION].
+     One entry per incident, newest at the bottom:
+       ## [YYYY-MM-DD] <short title>
+       - trigger: <what the user flagged / what didn't work>
+       - component: rubric | gate | verifier | interview | skill-prompt | budget | memory | other
+       - why: <why the harness caused or allowed it>
+       - improvement: <the concrete change to ultragoal that would prevent this class>
+       - provenance: [USER-FEEDBACK · date] | [INFERRED] -->
+`;
+
 function readKnobs(root) {
   // current knob values from an existing config.md (empty object if none)
   try {
@@ -377,6 +411,8 @@ function readKnobs(root) {
       scope: g('scope'),
       memory: g('memory-sharing'),
       verification: g('verification'),
+      rigor: g('rigor'),
+      harnessLog: g('harness-log'),
       budget: g('default-budget'),
       cadence: g('verification-cadence'),
       interview: g('interview-depth'),
@@ -402,11 +438,13 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 
 | Knob | Value |
 |---|---|
+| rigor | ${picks.rigor} |
 | action-mode | ${picks.action} |
 | communication | ${picks.communication} |
 | scope | ${picks.scope} |
 | memory-sharing | ${picks.memory} |
 | verification | ${picks.verification} |
+| harness-log | ${picks.harnessLog} |
 | default-budget | ${prev.budget || '25'} |
 | verification-cadence | ${prev.cadence || 'final'} |
 | interview-depth | ${prev.interview || 'adaptive'} |
@@ -417,6 +455,11 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
   for (const [name, content] of Object.entries(MEMORY_FILES)) {
     const f = join(ug, 'memory', name);
     if (!existsSync(f)) writeFileSync(f, content);
+  }
+  // opt-in harness-feedback log: seed the local file when the knob is on
+  if (picks.harnessLog === 'on') {
+    const hl = join(ug, 'harness-log.md');
+    if (!existsSync(hl)) writeFileSync(hl, HARNESS_LOG_TEMPLATE);
   }
   writeFileSync(join(ug, 'goals', 'archive', '.gitkeep'), '');
 
@@ -439,6 +482,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
     KNOBS.action.blocks[picks.action],
     KNOBS.communication.blocks[picks.communication],
     KNOBS.scope.blocks[picks.scope],
+    ...(picks.harnessLog === 'on' ? [KNOBS.harnessLog.blocks.on] : []),
     '<!-- ultragoal:end -->',
   ].join('\n\n');
   const cm = join(root, 'CLAUDE.md');
@@ -532,9 +576,11 @@ if ((wantSetup && !alreadySetup) || wantReconfig) {
     scope: current.scope || 'elaborate-ok',
     memory: current.memory || 'git',
     verification: current.verification || 'on',
+    rigor: current.rigor || 'vanilla',
+    harnessLog: current.harnessLog || 'off',
   };
   if (interactive) {
-    for (const key of ['action', 'communication', 'scope', 'memory', 'verification']) {
+    for (const key of ['rigor', 'action', 'communication', 'scope', 'memory', 'verification', 'harnessLog']) {
       const v = await p.select({ message: KNOBS[key].question, options: KNOBS[key].options, initialValue: picks[key] });
       if (p.isCancel(v)) bail('Cancelled.');
       picks[key] = v;

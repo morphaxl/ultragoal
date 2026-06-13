@@ -60,7 +60,7 @@ npx ultragoal --global
 npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contract tests"
 ```
 
-This is how ultragoal is meant to be used: one command from terminal to running goal loop, at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the turn budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
+This is how ultragoal is meant to be used: one command from terminal to running goal loop, at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
 
 Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual sweep — every install, user scope plus all per-project pins, in one go. Uninstall with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
@@ -78,7 +78,7 @@ That's a real, unedited ramble — exactly what it's built for. Ultragoal will:
 1. **Consult** project memory and scan your repo with parallel subagents before asking you anything.
 2. **Interview** you on the decisions that actually steer the outcome — approach, the definition of "done", what's explicitly out of scope, which tradeoff to favor — never trivia it could look up. Each is a concrete fork with a recommended default, so you ratify fast or override deliberately.
 3. **Spec** the goal: objective with the *why*, a rubric where every item has an exact check command, stop conditions, and constraints — then adversarially reviews its own rubric before showing you.
-4. **Recap before building** — what it understood you want, which way each decision went (including calls it made for you), what it's about to do, what it will take in rough terms (turns and subagent fan-outs — never time estimates), and how it'll know it's done. Your last cheap moment to redirect, before a single line changes.
+4. **Recap before building** — what it understood you want, which way each decision went (including calls it made for you), what it's about to do, what it will take in rough terms (a depth tier — quick pass / standard / deep — plus expected subagent fan-outs; never time estimates), and how it'll know it's done. Your last cheap moment to redirect, before a single line changes.
 5. **Arm the loop** on your yes. From here a Stop-hook gate blocks the end of every turn and feeds the remaining rubric back, so Claude keeps working without you prompting each step.
 6. **Verify** with a separate fresh-context subagent that re-runs every check itself and tries to *refute* the claims — because models grade their own work generously, and independent verifiers don't.
 7. **Distill** before it's allowed to finish: verified lessons, working patterns, and dead ends are written to `.ultragoal/memory/`, so the next goal starts smarter.
@@ -116,6 +116,8 @@ Everything the plugin produces is plain markdown you own — editable, diffable,
 ├── config.md            # your knobs — hand-editable
 ├── stats.tsv            # one row per finished goal: turns, verifier fails, outcome —
 │                        #   "rubric design is the skill"; this is its scoreboard
+├── harness-log.md       # opt-in (harness-log knob): when the harness itself misbehaves,
+│                        #   a self-observation of why + how to improve it. local only.
 ├── goals/
 │   ├── active/
 │   │   └── <slug>/      # one directory per live goal (concurrent across sessions)
@@ -137,17 +139,29 @@ Memory is **git-committed by default**: it's your team's growing brain — every
 
 ## The knobs
 
-Five questions at first run, stored in `.ultragoal/config.md`, each backed verbatim by Anthropic's official prompting guidance:
+Seven questions at first run, stored in `.ultragoal/config.md`, each backed verbatim by Anthropic's official prompting guidance:
 
 | Knob | Options (default first) |
 |---|---|
+| Rigor | vanilla · standard · max — how much scaffolding the harness adds; match it to model strength (see below) |
 | Action mode | proactive · conservative |
 | Communication | lead-with-outcome · detailed |
 | Scope discipline | polish-welcome · minimal |
 | Memory sharing | git-committed · local-only |
 | Verification | on · off — off lets goals finish on a fully checked rubric + saved lessons, skipping the independent verifier pass |
+| Harness-feedback log | off · on — opt-in: when you flag a harness mistake, ultragoal records why it failed + how to improve, to a local `.ultragoal/harness-log.md` (never transmitted; sharing is manual) |
 
 Change them anytime with `/ultragoal:setup` or by editing the markdown.
+
+### Rigor — one harness, three model tiers
+
+The same loop works for a frontier model and a small one; what changes is how much verification scaffolding it needs. `rigor` is the dial, and it's the project's answer to "the advanced techniques are over-prescriptive on a strong model" — they're opt-in, not removed.
+
+- **vanilla** (default) — for strong models like Fable. The article's pure loop: one fresh-context verifier at the final sign-off, no scouts, no monitor. A capable model self-corrects against an honest rubric; piling on redundancy just costs tokens.
+- **standard** — bells and whistles, modest cost: the single grader plus interim re-checks on shaky items, pessimistic double-runs near thresholds, 2–4 research scouts for read-heavy work, and a background log monitor that surfaces errors from the goal's logs.
+- **max** — every recommended technique, for **lower-intelligence models** or release-grade stakes: a **3-lens verification panel** (checks / refute / constraints, all must PASS — mutually-blind subagents), every-claim cadence, multi-modal scout sweeps with a completeness critic, deep interview, and rubric variants. A weaker model can't catch its own blind spots in one pass; three diverse judges and redundant searches buy back the reliability — and research (aspect-lens ensembles, guard-agent mid-trajectory checks, 2–3-judge saturation) says that's exactly where the gains are. Set it once, or per goal by saying "max mode" in a brief.
+
+The engine stays simple — the gate only knows `verify: off | on | panel`; rigor lives in the goal skill, which expands it into the concrete loop above.
 
 ## How the loop actually works
 
@@ -162,7 +176,7 @@ Every goal spec also includes a one-line **native `/goal` fallback**, handy for 
 
 ### Escape hatches
 
-Loops need brakes. Every rubric must carry stop conditions; every goal has a turn budget (default 25) — at the limit the gate demands an honest status report, and if that's ignored it pauses the goal itself; `/ultragoal:stop` releases it instantly; and the gate **fails open** on any script error. It cannot trap a session. The gate also binds to the session that armed the goal — open a second Claude session in the same repo for a quick side question and it stays free (the banner tells it how to take the goal over if you want that). Verifier verdicts are cryptographically dull but effective: each one is bound to a hash of the rubric it was issued against, so a stale PASS — or a quietly weakened rubric — never releases the gate. The engine has a regression suite (`tests/gate-test.sh`) run in CI on every push.
+Loops need brakes. Every rubric must carry stop conditions; every goal has a budget of gate-checked turns, chosen as a depth tier — quick pass / standard / deep — when the goal is armed (default 25). A turn is the gate's own event, counted with zero machinery that could miscount it; at the limit the gate demands an honest status report, and if that's ignored it pauses the goal itself and tells you it did; `/ultragoal:stop` releases it instantly; and the gate **fails open** on any script error. It cannot trap a session. The gate also binds to the session that armed the goal — open a second Claude session in the same repo for a quick side question and it stays free (the banner tells it how to take the goal over if you want that). Verifier verdicts are cryptographically dull but effective: each one is bound to a hash of the rubric it was issued against, so a stale PASS — or a quietly weakened rubric — never releases the gate. The engine has a regression suite (`tests/gate-test.sh`) run in CI on every push.
 
 ### Footprint
 
@@ -190,7 +204,7 @@ Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](
 
 **How do I change my setup answers later?** They're just markdown: edit `.ultragoal/config.md` directly (flip `verification` to `off`, change `scope`, anything), or re-run `/ultragoal:setup` to be re-asked interactively. Changes apply to the next goal you arm.
 
-**Does it spend a lot of tokens?** The gate itself is free (no model call). The loop spends what the work needs — that's the point of goal-directed runs. Budgets cap the blast radius; start small (10–15 turns) to calibrate.
+**Does it spend a lot of tokens?** The gate itself is free (no model call). The loop spends what the work needs — that's the point of goal-directed runs. Budgets cap the blast radius — pick the depth tier when arming (a quick pass for your first goal) to calibrate.
 
 **Can I run it unattended?** Yes — that's the recommended mode: `npx ultragoal run "<brief>"` launches at full autonomy, and `--headless` runs the loop to completion with no UI at all. The discipline lives in the rubric, the verifier, and the budget — not in you approving each tool call.
 

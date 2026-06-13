@@ -8,12 +8,15 @@ This repo is the **ultragoal** Claude Code plugin (goal loops: rubric-gated auto
 .claude-plugin/   plugin.json (manifest) + marketplace.json (self-hosting marketplace)
 skills/           the skills: goal, status, stop, remember, compact, setup, verify
   goal/           flagship; supporting files: rubric-guide, experiment-guide, goal-template, rubrics/ (the rubric library)
-agents/           verifier.md — the fresh-context verifier subagent
+agents/           verifier.md — the fresh-context verifier subagent (also the 3-lens panel at rigor=max)
 hooks/hooks.json  Stop → goal-gate.sh; SessionStart → session-context.sh; PreToolUse(AskUserQuestion) → arm-guard.sh
-scripts/          goal-gate.sh (the loop engine) + session-context.sh + arm-guard.sh — POSIX shell, fail-open/fail-quiet
+monitors/monitors.json  on-skill-invoke:goal → goal-log-monitor.sh (standard/max rigor; self-disables in vanilla)
+scripts/          goal-gate.sh (the loop engine) + session-context.sh + arm-guard.sh + goal-log-monitor.sh — POSIX shell, fail-open/fail-quiet
 installer/cli.mjs the npx installer (clack TUI); the ONLY file shipped to npm
 tests/gate-test.sh  the engine regression suite (run in CI)
 ```
+
+**Rigor tiers (`rigor` config knob, default vanilla).** The gate understands only `verify: off|on|panel`; the goal skill reads `rigor` and expands it — vanilla = lean single-grader loop (today's behavior), standard = + interim checks/double-runs/scouts/monitor, max = `verify: panel` (3 mutually-blind lenses, all PASS) + every-claim + multi-modal sweeps + deep interview. Keep that separation: rigor never enters the gate.
 
 State the plugin writes into a *user's* repo (`.ultragoal/`, CLAUDE.md block) is documented in README.md and DESIGN.md.
 

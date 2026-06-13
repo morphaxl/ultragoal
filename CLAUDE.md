@@ -20,4 +20,8 @@ Lead with the outcome. Your first sentence after finishing should answer "what h
 
 Reasonable polish beyond the literal request is welcome — tests for adjacent edge cases, small refactors the change obviously motivates — but name what you added beyond the ask in your summary so the user can drop it.
 
+## Harness feedback log (ultragoal)
+
+When the user signals the harness itself misbehaved — a wrong default, a misleading interview question, a missing or weak rubric check, ceremony on a task that didn't need a goal, a gate that fired wrongly, an undersized budget — append a self-observation to `.ultragoal/harness-log.md` (create it if missing). Reason about ultragoal, not the project: which harness component was at fault (rubric / gate / verifier / interview / skill-prompt / budget / memory), why it let the mistake through, and the concrete change to ultragoal that would prevent that class. One entry per incident: `## [date] <title>` then `- trigger:` / `- component:` / `- why:` / `- improvement:` / `- provenance: [USER-FEEDBACK · date]`. Keep it distinct from project memory — a harness shortcoming goes here; a project dead end goes in `failures.md`; a project fact/correction goes in memory with `[USER-CORRECTION]`. It is local markdown only — never transmitted; sharing is yours to initiate.
+
 <!-- ultragoal:end -->

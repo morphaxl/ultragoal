@@ -7,7 +7,7 @@ Write the spec to `.ultragoal/goals/active/<slug>/goal.md` exactly in this shape
 slug: <kebab-case-short-name>
 status: active                 # written as "draft" until the user arms it; the gate ignores drafts
 kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
-budget: <max turns — default from .ultragoal/config.md, usually 25>
+budget: <max gate-checked turns, from the chosen depth tier — quick ~10 · standard 25 · deep 60+; default from .ultragoal/config.md>
 session: <the arming session's ID — the gate enforces only this session's goal; another session can take it over by rewriting this field>
 verify: on | off               # from config's verification knob; off = checked rubric suffices, no verifier pass
 created: <YYYY-MM-DD>
@@ -34,7 +34,7 @@ relevant files, links. List every assumption you made on the user's behalf.>
 
 
 # Stop conditions
-- <turn budget> turns reached, or <item> fails verification 3 consecutive times
+- <budget> turns reached (the gate tracks this), or <item> fails verification 3 consecutive times
 - <any domain-specific bail-out condition>
 
 # Constraints

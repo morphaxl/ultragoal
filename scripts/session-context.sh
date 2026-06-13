@@ -84,6 +84,17 @@ if [ -r "$MEM" ]; then
   last_mem="$(grep -rhoE '\[20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$UG/memory" 2>/dev/null | tr -d '[' | sort | tail -1)"
   if [ -n "$last_mem" ]; then
     commits_since="$(git -C "$ROOT" rev-list --count --since="$last_mem" HEAD 2>/dev/null)"
+    if [ -z "$commits_since" ]; then
+      # Workspace root isn't a git repo (monorepo/multi-repo wrapper): take the
+      # busiest nested repo, one or two levels down.
+      commits_since=0
+      for gd in "$ROOT"/*/.git "$ROOT"/*/*/.git; do
+        [ -e "$gd" ] || continue
+        c="$(git -C "$(dirname "$gd")" rev-list --count --since="$last_mem" HEAD 2>/dev/null)"
+        case "$c" in '' | *[!0-9]*) c=0 ;; esac
+        [ "$c" -gt "$commits_since" ] && commits_since="$c"
+      done
+    fi
     case "$commits_since" in '' | *[!0-9]*) commits_since=0 ;; esac
     if [ "$commits_since" -ge 20 ]; then
       echo "Staleness warning: the newest memory entry is from $last_mem, but the repo has $commits_since commits since then. Claims about touched areas may be outdated — re-verify before relying on them, and consider /ultragoal:compact."

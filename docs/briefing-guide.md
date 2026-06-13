@@ -24,7 +24,7 @@ You don't need structure. A messy, unedited voice ramble works — the interview
 
 **8. Risk and autonomy.** What it may do freely versus what it must confirm first: "migrations are fine on the dev DB, never on staging", "don't push, I'll review the branch." Destructive or irreversible actions default to asking — but saying it up front means no mid-run stall.
 
-**9. Size feel.** "Quick fix" vs "this is the big one, take the night." This calibrates both the interview depth (a big ambiguous goal earns more questions) and the turn budget.
+**9. Size feel.** "Quick fix" vs "this is the big one, take the night." This calibrates both the interview depth (a big ambiguous goal earns more questions) and the depth tier (quick pass / standard / deep).
 
 ## What to leave out
 

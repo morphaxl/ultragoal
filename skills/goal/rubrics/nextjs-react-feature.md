@@ -12,6 +12,7 @@ If available in this session (find more on skills.sh): `vercel-react-best-practi
 - [ ] Unit/integration tests pass and cover the feature's main paths — check: `npx vitest run` (or `npx jest --ci`) exits 0; new test files exist in the diff
 - [ ] Production build succeeds — check: `npx next build` exits 0 (also catches client-hooks-in-server-components)
 - [ ] No hydration errors on touched routes — check: Playwright against `next build && next start`, collecting `page.on('console')` + `page.on('pageerror')`, zero matches for `/hydrat(ion|e)/i` or React errors #418/#423/#425
+- [ ] Touched UI renders its key elements visibly — check: Playwright loads the route and asserts the change's target element is visible with a non-zero box (`await expect(page.getByTestId('...')).toBeVisible()` plus a `boundingBox()` with width/height > 0) — present-in-DOM is not the same as rendered; this catches collapsed/0-height/clipped containers that the build and hydration checks pass
 - [ ] Server/client boundary respected — check: server-only modules import the `server-only` package (build fails if client-imported); `grep -r "NEXT_PUBLIC_" .env*` reviewed for secret leaks
 - [ ] Error and loading states exist for new route segments — check: `find app -name "error.tsx"` and `find app -name "loading.tsx"` (or `<Suspense>`) cover every async segment touched
 - [ ] VERIFIER: independent sign-off recorded in the Verification log

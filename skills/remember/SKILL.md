@@ -30,6 +30,8 @@ Each file's header says what belongs in it and what doesn't — read it before f
 
 Unsure where something goes? File the evidence line in the closest file and flag it in the index rather than inventing a new home. The same fact living in two places is how agents stop trusting the system.
 
+**One thing that does NOT go in project memory:** a shortcoming of the *harness itself* (a bad ultragoal default, a misleading interview question, a missing rubric check, a gate misfire). If the `harness-log` knob is on, that belongs in `.ultragoal/harness-log.md` — a self-observation about improving the plugin — not in facts/patterns/failures, which are about *this repo*. A project dead end is still `failures.md`; a user correction about the project is still `[USER-CORRECTION]` in memory; only "the harness should change" goes to the harness log.
+
 ## Provenance — every compiled claim carries how it's known
 
 ```

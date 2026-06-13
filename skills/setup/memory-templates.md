@@ -81,3 +81,23 @@ Create each file exactly in this shape. The resolver header tells every future s
 
 ## Evidence log
 ```
+
+## harness-log.md  (ONLY when the `harness-log` knob is on)
+
+Lives at `.ultragoal/harness-log.md` (beside `config.md`/`stats.tsv`, NOT under `memory/`) — it is harness self-data about improving the *plugin*, not project knowledge, so it is never injected into sessions. Opt-in, local markdown only, never transmitted; sharing is user-initiated.
+
+```markdown
+# Harness feedback log
+
+<!-- ultragoal's own failure observations, for improving the plugin. OPT-IN via the harness-log knob.
+     Local markdown only — never transmitted; you choose whether to share it.
+     Distinct from project memory: harness shortcomings go HERE; project dead ends go in
+     memory/failures.md; project facts/corrections go in memory with [USER-CORRECTION].
+     One entry per incident, newest at the bottom:
+       ## [YYYY-MM-DD] <short title>
+       - trigger: <what the user flagged / what didn't work>
+       - component: rubric | gate | verifier | interview | skill-prompt | budget | memory | other
+       - why: <why the harness caused or allowed it>
+       - improvement: <the concrete change to ultragoal that would prevent this class>
+       - provenance: [USER-FEEDBACK · date] | [INFERRED] -->
+```

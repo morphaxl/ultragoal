@@ -1,0 +1,8 @@
+[
+  {
+    "name": "goal-log-watch",
+    "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/goal-log-monitor.sh",
+    "description": "New error/warning lines from the active goal's logs/ directory (standard/max rigor only; self-disables in vanilla)",
+    "when": "on-skill-invoke:goal"
+  }
+]

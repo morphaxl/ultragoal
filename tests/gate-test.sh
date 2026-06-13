@@ -154,14 +154,64 @@ check_all_boxes; run_gate
 check "verify off + all checked -> distill, no verdict needed" 2 "$RC" "Distill" "$ERR"
 grep -q "no valid verification" "$ERR" && check "verify off skips verdict demand" 0 1 || check "verify off skips verdict demand" 0 0
 
-fresh; goalfile active task 25 "" panel; run_gate   # unknown verify values coerce to "on"
+fresh; goalfile active task 25 "" bogus; run_gate   # unknown verify values coerce to "on"
 check "unknown verify value -> treated as on" 2 "$RC" "dispatch the ultragoal:verifier" "$ERR"
+
+# ---- panel verification (rigor=max): all 3 lenses must PASS on current hash ----
+mk_panel_goal() { # writes a goalfile with verify: panel, all boxes checked + evidence
+  goalfile active task 25 "" panel
+  check_all_boxes
+  awk '{print} /- \[x\]/ {print "  - evidence: \`true\` -> ok"}' "$GOAL" > "$GOAL.t" && mv "$GOAL.t" "$GOAL"
+}
+add_lens() { printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s lens=%s\n' "$(rubric_hash)" "$1" >> "$GOAL"; }
+
+fresh; mk_panel_goal; run_gate
+check "panel: checked, no lenses -> block" 2 "$RC" "panel verdict is incomplete" "$ERR"
+grep -q "dispatch three ultragoal:verifier" "$ERR" && check "panel: protocol says dispatch 3 in parallel" 0 0 || check "panel: protocol says dispatch 3 in parallel" 0 1
+add_lens checks; run_gate
+check "panel: 1 of 3 lenses -> still block" 2 "$RC" "panel verdict is incomplete" "$ERR"
+add_lens refute; run_gate
+check "panel: 2 of 3 lenses -> still block" 2 "$RC" "panel verdict is incomplete" "$ERR"
+add_lens constraints; run_gate
+check "panel: all 3 lenses PASS -> release to distill" 2 "$RC" "Distill" "$ERR"
+
+# a single full-rubric verdict (no lens) does NOT satisfy a panel goal
+fresh; mk_panel_goal
+printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s\n' "$(rubric_hash)" >> "$GOAL"; run_gate
+check "panel: unlensed verdict does not release" 2 "$RC" "panel verdict is incomplete" "$ERR"
+
+# a stale lens (old hash) blocks; a FAIL on one lens blocks
+fresh; mk_panel_goal; add_lens checks; add_lens refute
+printf '\nULTRAGOAL-VERIFIED: PASS rubric=999999 lens=constraints\n' >> "$GOAL"; run_gate
+check "panel: stale-hash lens -> block" 2 "$RC" "panel verdict is incomplete" "$ERR"
+fresh; mk_panel_goal; add_lens checks; add_lens refute
+printf '\nULTRAGOAL-VERIFIED: FAIL rubric=%s lens=constraints — broke\n' "$(rubric_hash)" >> "$GOAL"; run_gate
+check "panel: one FAIL lens -> block" 2 "$RC" "panel verdict is incomplete" "$ERR"
+# latest verdict per lens wins: a later PASS after a FAIL releases
+add_lens constraints; run_gate
+check "panel: latest lens verdict wins (PASS after FAIL) -> release" 2 "$RC" "Distill" "$ERR"
 
 fresh; goalfile active task 1; run_gate           # turn 1: normal block
 run_gate; check "turn budget+1 -> nudge" 2 "$RC" "budget reached" "$ERR"
-run_gate; check "past nudge -> open" 0 "$RC"
+run_gate; check "ignored nudge -> gate pauses + demands honest wrap-up" 2 "$RC" "PAUSED" "$ERR"
 grep -q '^status: paused' "$GOAL" && check "zombie goal auto-paused" 0 0 || check "zombie goal auto-paused" 0 1
 run_gate; check "paused stays open" 0 "$RC"
+
+# raising the budget after a warning clears the marker — a fresh exhaustion warns again
+fresh; goalfile active task 1
+run_gate; run_gate                                # turn 2: warning + marker
+tmp="$GOAL.t"; sed 's/^budget: 1/budget: 9/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"
+run_gate; check "raised budget -> back to work" 2 "$RC" "still active" "$ERR"
+[ ! -e "$(dirname "$GOAL")/.budget-warned" ] && check "raise clears the warning marker" 0 0 || check "raise clears the warning marker" 0 1
+
+# garbage budget values fall back to the 25 default, never unbounded or crashed
+fresh; goalfile active task "500k"; run_gate
+check "non-integer budget -> default 25, blocks normally" 2 "$RC" "turn 1/25" "$ERR"
+
+# [X] (capital) checked boxes still owe evidence
+fresh; goalfile active
+tmp="$GOAL.t"; sed 's/- \[ \]/- [X]/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; run_gate
+check "capital-X boxes owe evidence" 2 "$RC" "no evidence line" "$ERR"
 
 fresh; goalfile active; mkdir -p "$T/sub/inner"; export CLAUDE_PROJECT_DIR="$T/sub/inner"; run_gate
 check "walk-up finds workspace root" 2 "$RC" "still active" "$ERR"
@@ -182,6 +232,15 @@ printf '# x\n---\n## Evidence log\n[2026-01-01 S1] old\n' > "$UG/memory/facts.md
 ( cd "$T" && git init -q && git -c user.name=t -c user.email=t@t commit -q --allow-empty -m a && for i in $(seq 1 25); do git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "c$i"; done )
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"
 echo "$OUT" | grep -q "Staleness warning" && check "ctx: staleness warning" 0 0 || check "ctx: staleness warning" 0 1
+
+# staleness works when the workspace root is NOT a git repo (nested repos)
+fresh
+printf '# Memory index\n- x\n' > "$UG/memory/MEMORY.md"
+printf '# x\n---\n## Evidence log\n[2026-01-01 S1] old\n' > "$UG/memory/facts.md"
+mkdir -p "$T/wrap/repo"
+( cd "$T/wrap/repo" && git init -q && for i in $(seq 1 25); do git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "c$i"; done )
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "Staleness warning" && check "ctx: staleness via nested repos (non-git root)" 0 0 || check "ctx: staleness via nested repos (non-git root)" 0 1
 
 # cadence nudge: compact when memory has evidence, remember when it's empty
 printf '11' > "$UG/memory/.sessions"
