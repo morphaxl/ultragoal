@@ -5,6 +5,7 @@ Write the spec to `.ultragoal/goals/active/<slug>/goal.md` exactly in this shape
 ```markdown
 ---
 slug: <kebab-case-short-name>
+type: goal                     # Open Knowledge Format concept type (OKF v0.1 §4.1); makes the spec a valid OKF concept doc. The gate ignores it.
 status: active                 # written as "draft" until the user arms it; the gate ignores drafts
 kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
 budget: <max gate-checked turns, from the chosen depth tier — quick ~10 · standard 25 · deep 60+; default from .ultragoal/config.md>

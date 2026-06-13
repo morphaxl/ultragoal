@@ -2,6 +2,8 @@
 
 Create each file exactly in this shape. The resolver header tells every future session what belongs in the file; the `---` separates the rewritable compiled layer from the append-only evidence log.
 
+> **OKF alignment.** This memory bundle is in the [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) lineage: `MEMORY.md` plays OKF's `index.md` (progressive-disclosure listing) role, and the below-the-line dated evidence log plays OKF's `log.md` (update history) role. ultragoal *extends* OKF with per-claim provenance tags and the two-layer compiled/evidence split — epistemics OKF v0.1 doesn't specify. We intentionally keep the aggregate `facts/patterns/failures` files rather than OKF's one-concept-per-file shape (a lesson store isn't an asset catalog), so these templates carry resolver headers, not YAML frontmatter — alignment by lineage, not by full conformance. See DESIGN.md §7.5.
+
 ## MEMORY.md
 
 ```markdown
