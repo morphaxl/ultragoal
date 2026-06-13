@@ -91,10 +91,16 @@ case "$budget" in '' | *[!0-9]*) budget=25 ;; esac
 
 # ---- rubric integrity (hash frozen at arm; change invalidates verdicts) -----
 hash_file="$GDIR/.rubric-hash"
-# The hash binds verdicts to the CHECKS, not to progress: checkbox state and
-# evidence lines are normalized out, so marking items done never voids a verdict —
-# editing what a check says or measures still does.
-rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | sed -e 's/^\( *- \)\[[xX ]\]/\1[ ]/' -e '/^ *- evidence:/d' 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
+# The hash binds verdicts to the CHECKS, not to progress: checkbox state is
+# normalized and the WHOLE evidence block under each box is stripped (the
+# `- evidence:` line and its continuation lines, up to the next box / `- check:` /
+# unindented line), so marking items done or recording/reflowing evidence — however
+# many lines — never voids a verdict; editing what a check says or measures still does.
+rubric_hash="$(awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" 2>/dev/null | sed 's/^\( *- \)\[[xX ]\]/\1[ ]/' 2>/dev/null | awk '
+  /^[[:space:]]*- evidence:/ { inev=1; next }
+  inev && ($0 ~ /^[[:space:]]*- \[/ || $0 ~ /^[[:space:]]*- check:/ || $0 ~ /^[^[:space:]]/) { inev=0 }
+  inev { next }
+  { print }' 2>/dev/null | cksum 2>/dev/null | cut -d' ' -f1)"
 integrity_note=""
 if [ -n "$rubric_hash" ]; then
   if [ -r "$hash_file" ]; then
@@ -153,11 +159,13 @@ unchecked="$(printf '%s\n' "$rubric" | grep '^[[:space:]]*- \[ \]' 2>/dev/null)"
 unchecked_count="$(printf '%s' "$unchecked" | grep -c '\[ \]' 2>/dev/null)"
 case "$unchecked_count" in '' | *[!0-9]*) unchecked_count=0 ;; esac
 
-# evidence ledger: every checked box should carry an evidence line beneath it
+# evidence ledger: every checked box should carry an evidence line somewhere in
+# its block (anywhere before the next box) — not necessarily the immediately
+# following line, so multi-line item descriptions don't read as missing evidence.
 no_evid="$(printf '%s\n' "$rubric" | awk '
-  /^[[:space:]]*- \[[xX]\]/ { if (pend) miss++; pend=1; next }
-  pend { if ($0 !~ /evidence:/) miss++; pend=0 }
-  END { if (pend) miss++; print miss+0 }' 2>/dev/null)"
+  /^[[:space:]]*- \[[xX ]\]/ { if (checked && !found) miss++; checked=($0 ~ /\[[xX]\]/); found=0; next }
+  checked && /evidence:/ { found=1 }
+  END { if (checked && !found) miss++; print miss+0 }' 2>/dev/null)"
 case "$no_evid" in '' | *[!0-9]*) no_evid=0 ;; esac
 
 verified=0

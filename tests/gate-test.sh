@@ -64,7 +64,15 @@ run_gate() { # [session_id] -> sets RC, ERR
   RC=$?
 }
 
-rubric_hash() { awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | sed -e 's/^\( *- \)\[[xX ]\]/\1[ ]/' -e '/^ *- evidence:/d' | cksum | cut -d' ' -f1; }
+# MIRROR of the gate's hash pipeline (scripts/goal-gate.sh ~L97) — keep in lockstep.
+rubric_hash() { awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | sed 's/^\( *- \)\[[xX ]\]/\1[ ]/' | awk '
+  /^[[:space:]]*- evidence:/ { inev=1; next }
+  inev && ($0 ~ /^[[:space:]]*- \[/ || $0 ~ /^[[:space:]]*- check:/ || $0 ~ /^[^[:space:]]/) { inev=0 }
+  inev { next }
+  { print }' | cksum | cut -d' ' -f1; }
+# the PRE-FIX hash pipeline (stripped only the first evidence line) — used by a
+# regression test below to prove multi-line evidence used to move the hash.
+old_rubric_hash() { awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' "$GOAL" | sed -e 's/^\( *- \)\[[xX ]\]/\1[ ]/' -e '/^ *- evidence:/d' | cksum | cut -d' ' -f1; }
 check_all_boxes() { tmp="$GOAL.t"; sed 's/- \[ \]/- [x]/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; }
 
 echo "goal-gate.sh"
@@ -142,6 +150,111 @@ check "check-text edit voids the verdict" 2 "$RC" "no valid verification" "$ERR"
 fresh; goalfile active; check_all_boxes; run_gate
 printf '\nULTRAGOAL-INTERIM: PASS items 1-2 rubric=%s\n' "$(rubric_hash)" >> "$GOAL"; run_gate
 check "interim-only verdict does not release" 2 "$RC" "no valid verification" "$ERR"
+
+# --- multi-line rubric items: evidence detected anywhere in the item block ------
+# (regression: the pre-fix parser only inspected the line immediately after a box,
+#  so a wrapped description read as "checked without evidence" — harness-log 2026-06-14)
+fresh; mkdir -p "$(dirname "$GOAL")"
+cat > "$GOAL" <<'EOF'
+---
+slug: t
+status: active
+kind: task
+budget: 25
+session: s1
+verify: on
+created: 2026-06-10
+---
+# Rubric
+- [x] 1. a claim whose description
+  wraps onto a second line before its evidence
+  - evidence: `true` -> ok
+- [x] VERIFIER: sign-off
+  - evidence: `true` -> ok
+# Stop conditions
+- none
+EOF
+run_gate
+grep -q "no evidence line" "$ERR" \
+  && check "multi-line description + evidence below -> no false missing-evidence nag" 0 1 \
+  || check "multi-line description + evidence below -> no false missing-evidence nag" 0 0
+oldmiss="$(awk '
+  /^[[:space:]]*- \[[xX]\]/ { if (pend) miss++; pend=1; next }
+  pend { if ($0 !~ /evidence:/) miss++; pend=0 }
+  END { if (pend) miss++; print miss+0 }' "$GOAL")"
+[ "${oldmiss:-0}" -gt 0 ] \
+  && check "pre-fix single-line parser WOULD have miscounted this item" 0 0 \
+  || check "pre-fix single-line parser WOULD have miscounted this item" 0 1
+
+# a checked item with NO evidence anywhere in its block is still flagged
+fresh; mkdir -p "$(dirname "$GOAL")"
+cat > "$GOAL" <<'EOF'
+---
+slug: t
+status: active
+kind: task
+budget: 25
+session: s1
+verify: on
+created: 2026-06-10
+---
+# Rubric
+- [x] 1. a claim with a multi-line
+  description but no evidence at all
+- [x] VERIFIER: sign-off
+  - evidence: `true` -> ok
+# Stop conditions
+- none
+EOF
+run_gate
+check "multi-line item with NO evidence -> still nagged" 2 "$RC" "no evidence line" "$ERR"
+
+# --- hash invariance: reflowing/extending an evidence block never moves the hash -
+fresh; mkdir -p "$(dirname "$GOAL")"
+cat > "$GOAL" <<'EOF'
+---
+slug: t
+status: active
+kind: task
+budget: 25
+session: s1
+verify: on
+created: 2026-06-10
+---
+# Rubric
+- [ ] 1. some claim — check: `true`
+- [ ] VERIFIER: sign-off
+# Stop conditions
+- none
+EOF
+Hnew_bare="$(rubric_hash)"; Hold_bare="$(old_rubric_hash)"
+cat > "$GOAL" <<'EOF'
+---
+slug: t
+status: active
+kind: task
+budget: 25
+session: s1
+verify: on
+created: 2026-06-10
+---
+# Rubric
+- [x] 1. some claim — check: `true`
+  - evidence: `true` -> ok
+    spanning a second
+    and a third line
+- [x] VERIFIER: sign-off
+  - evidence: `true` -> ok
+# Stop conditions
+- none
+EOF
+Hnew_ev="$(rubric_hash)"; Hold_ev="$(old_rubric_hash)"
+[ "$Hnew_bare" = "$Hnew_ev" ] \
+  && check "multi-line evidence reflow leaves rubric hash unchanged" 0 0 \
+  || check "multi-line evidence reflow leaves rubric hash unchanged" 0 1
+[ "$Hold_bare" != "$Hold_ev" ] \
+  && check "pre-fix hash WOULD have changed on the same reflow (the bug)" 0 0 \
+  || check "pre-fix hash WOULD have changed on the same reflow (the bug)" 0 1
 
 fresh; goalfile active; run_gate
 tmp="$GOAL.t"; sed 's/item one/item ONE CHANGED/' "$GOAL" > "$tmp" && mv "$tmp" "$GOAL"; run_gate
