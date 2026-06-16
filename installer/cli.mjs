@@ -6,9 +6,12 @@ import { homedir } from 'node:os';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
-const MARKETPLACE = 'morphaxl/ultragoal';
-const MARKETPLACE_NAME = 'ultragoal';
-const PLUGIN = 'ultragoal@ultragoal';
+const CLAUDE_MARKETPLACE = 'morphaxl/ultragoal';
+const CLAUDE_MARKETPLACE_NAME = 'ultragoal';
+const CLAUDE_PLUGIN = 'ultragoal@ultragoal';
+const CODEX_MARKETPLACE = 'morphaxl/ultragoal';
+const CODEX_MARKETPLACE_NAME = 'morphaxl';
+const CODEX_PLUGIN = 'ultragoal-codex@morphaxl';
 const DOCS = 'https://github.com/morphaxl/ultragoal';
 
 const args = process.argv.slice(2);
@@ -27,12 +30,12 @@ const BANNER = [
 function banner() {
   const tints = [pc.cyan, pc.cyan, pc.blue, pc.blue, pc.magenta, pc.magenta];
   console.log('\n' + BANNER.map((l, i) => tints[i](l)).join('\n'));
-  console.log(pc.dim('  goal loops for Claude Code — brief → goal → loop → verify → distill\n'));
+  console.log(pc.dim('  goal loops for agents — brief → goal → loop → verify → distill\n'));
 }
 
-// ---------------------------------------------------------------- claude ---
-function claude(cmdArgs, { quiet = true, cwd } = {}) {
-  const res = spawnSync('claude', cmdArgs, {
+// --------------------------------------------------------------- commands ---
+function runBin(bin, cmdArgs, { quiet = true, cwd } = {}) {
+  const res = spawnSync(bin, cmdArgs, {
     stdio: quiet ? 'pipe' : 'inherit',
     encoding: 'utf8',
     cwd,
@@ -41,17 +44,160 @@ function claude(cmdArgs, { quiet = true, cwd } = {}) {
   return res;
 }
 
+function claude(cmdArgs, opts) {
+  return runBin('claude', cmdArgs, opts);
+}
+
+function codex(cmdArgs, opts) {
+  return runBin('codex', cmdArgs, opts);
+}
+
 function bail(msg) {
   p.cancel(msg);
   process.exit(1);
+}
+
+function targetFlags() {
+  const targets = new Set();
+  if (flag('--all') || flag('--both')) {
+    targets.add('claude');
+    targets.add('codex');
+  }
+  if (flag('--claude')) targets.add('claude');
+  if (flag('--codex')) targets.add('codex');
+  return targets.size > 0 ? [...targets] : null;
+}
+
+function hasTarget(targets, target) {
+  return targets.includes(target);
+}
+
+function targetList(targets) {
+  return targets.map((target) => (target === 'claude' ? 'Claude Code' : 'Codex')).join(' + ');
+}
+
+function oneLineOutput(res) {
+  return ((res?.stdout || '') + (res?.stderr || '')).trim().split('\n').filter(Boolean).pop() || '';
+}
+
+function commandFailure(res) {
+  if (res?.missing) return 'command not found';
+  return oneLineOutput(res) || `exit ${res?.status ?? 1}`;
+}
+
+async function chooseInstallTargets() {
+  const explicit = targetFlags();
+  if (explicit) return explicit;
+  if (!interactive) return ['claude'];
+
+  const pick = await p.select({
+    message: 'Where should ultragoal be installed?',
+    options: [
+      { value: 'claude', label: 'Claude Code', hint: 'full hook-gated loop; current default' },
+      { value: 'codex', label: 'Codex', hint: 'native Goal-mode bridge skill' },
+      { value: 'both', label: 'Both', hint: 'Claude loop + Codex goal bridge' },
+    ],
+    initialValue: 'claude',
+  });
+  if (p.isCancel(pick)) bail('Cancelled.');
+  return pick === 'both' ? ['claude', 'codex'] : [pick];
+}
+
+function checkClaudeCli(spinner) {
+  spinner.start('Checking for Claude Code');
+  const probe = claude(['--version']);
+  if (probe.missing) {
+    spinner.stop(pc.red('Claude Code CLI not found'));
+    bail('Install Claude Code first: https://claude.com/claude-code');
+  }
+  if ((probe.status ?? 1) !== 0) {
+    spinner.stop(pc.red('Claude Code check failed'));
+    bail(`Claude Code CLI is installed but not healthy: ${commandFailure(probe)}`);
+  }
+  spinner.stop(`Claude Code ${pc.dim((probe.stdout || '').trim().split(' ')[0] || 'found')}`);
+}
+
+function checkCodexCli(spinner) {
+  spinner.start('Checking for Codex');
+  const probe = codex(['--version']);
+  if (probe.missing) {
+    spinner.stop(pc.red('Codex CLI not found'));
+    bail('Install Codex first, then rerun: npx ultragoal --codex');
+  }
+  if ((probe.status ?? 1) !== 0) {
+    spinner.stop(pc.red('Codex check failed'));
+    bail(`Codex CLI is installed but not healthy: ${commandFailure(probe)}`);
+  }
+  spinner.stop(`Codex ${pc.dim((probe.stdout || '').trim().split(' ')[0] || 'found')}`);
+}
+
+async function chooseClaudeScope() {
+  let scope = flag('--global') ? 'user' : 'project';
+  if (interactive && !flag('--project') && !flag('--global')) {
+    const pick = await p.select({
+      message: 'Where should the Claude Code plugin be installed?',
+      options: [
+        { value: 'project', label: 'Only this project', hint: 'recommended — written to .claude/settings.json, teammates get it via git' },
+        { value: 'user', label: 'Globally', hint: 'every project on this machine' },
+      ],
+      initialValue: 'project',
+    });
+    if (p.isCancel(pick)) bail('Cancelled.');
+    scope = pick;
+  }
+  return scope;
+}
+
+function installClaudePlugin(spinner, scope) {
+  checkClaudeCli(spinner);
+
+  spinner.start('Adding the Claude Code marketplace');
+  const add = claude(['plugin', 'marketplace', 'add', CLAUDE_MARKETPLACE]);
+  if (add.status !== 0) claude(['plugin', 'marketplace', 'update', CLAUDE_MARKETPLACE_NAME]);
+  spinner.stop('Claude Code marketplace ready');
+
+  spinner.start('Installing the Claude Code plugin');
+  let res = claude(['plugin', 'install', CLAUDE_PLUGIN, '--scope', scope]);
+  if (res.status !== 0) res = claude(['plugin', 'update', CLAUDE_PLUGIN, '--scope', scope]);
+  if ((res.status ?? 1) !== 0) {
+    spinner.stop(pc.red('Claude Code install failed'));
+    bail(`Try the manual route:\n  claude plugin marketplace add ${CLAUDE_MARKETPLACE}\n  claude plugin install ${CLAUDE_PLUGIN} --scope ${scope}`);
+  }
+  spinner.stop(`Claude Code plugin installed ${pc.dim(`(${scope} scope)`)}`);
+}
+
+function installCodexPlugin(spinner) {
+  checkCodexCli(spinner);
+
+  spinner.start('Adding the Codex marketplace');
+  const add = codex(['plugin', 'marketplace', 'add', CODEX_MARKETPLACE]);
+  if (add.status !== 0) {
+    const up = codex(['plugin', 'marketplace', 'upgrade', CODEX_MARKETPLACE_NAME]);
+    if ((up.status ?? 1) !== 0) {
+      spinner.stop(pc.red('Codex marketplace setup failed'));
+      bail(`Try the manual route:\n  codex plugin marketplace add ${CODEX_MARKETPLACE}\n  codex plugin add ${CODEX_PLUGIN}`);
+    }
+  }
+  spinner.stop('Codex marketplace ready');
+
+  spinner.start('Installing the Codex plugin');
+  const res = codex(['plugin', 'add', CODEX_PLUGIN]);
+  if ((res.status ?? 1) !== 0) {
+    spinner.stop(pc.red('Codex install failed'));
+    bail(`Try the manual route:\n  codex plugin marketplace add ${CODEX_MARKETPLACE}\n  codex plugin add ${CODEX_PLUGIN}`);
+  }
+  spinner.stop('Codex plugin installed');
 }
 
 // ------------------------------------------------------------------ help ---
 if (flag('--help') || flag('-h')) {
   banner();
   console.log(`  ${pc.bold('Usage')}
-    npx ultragoal              interactive install (scope, optional repo setup)
-    npx ultragoal --yes        non-interactive: project-scope install, no prompts
+    npx ultragoal              interactive install (choose Claude, Codex, or both)
+    npx ultragoal --yes        non-interactive: Claude project-scope install, no prompts
+    npx ultragoal --claude     install only the Claude Code loop
+    npx ultragoal --codex      install the Codex native Goal-mode bridge
+    npx ultragoal --all        install both Claude Code and Codex surfaces
     npx ultragoal --project    install at project scope (the default; team-shared via git)
     npx ultragoal --global     install machine-wide (user scope) instead
     npx ultragoal --setup      pre-configure the current repo (with --yes: defaults);
@@ -64,16 +210,24 @@ if (flag('--help') || flag('-h')) {
         --worktree             run in a fresh git worktree — isolated checkout, so
                                parallel goals on one repo can't collide
         --headless             non-interactive: runs the loop to completion and exits
-    npx ultragoal update       update every install — user scope and all
-                               per-project pins (project installs never
-                               auto-update; this sweeps them in one go)
+    npx ultragoal update       update Claude Code installs — user scope and all
+                               per-project pins
+    npx ultragoal update --codex
+                               refresh the Codex marketplace and plugin
+    npx ultragoal update --all update both Claude Code and Codex
     npx ultragoal uninstall    remove the plugin + marketplace (keeps your repo data)
+    npx ultragoal uninstall --codex
+                               remove only the Codex plugin + marketplace
     npx ultragoal uninstall --purge
                                also delete this repo's .ultragoal/ and CLAUDE.md block
 
-  Wraps Claude Code's native plugin system:
-    claude plugin marketplace add ${MARKETPLACE}
-    claude plugin install ${PLUGIN} [--scope project]
+  Claude Code install:
+    claude plugin marketplace add ${CLAUDE_MARKETPLACE}
+    claude plugin install ${CLAUDE_PLUGIN} [--scope project]
+
+  Codex install:
+    codex plugin marketplace add ${CODEX_MARKETPLACE}
+    codex plugin add ${CODEX_PLUGIN}
 
   Docs: ${DOCS}
 `);
@@ -98,9 +252,9 @@ if (args[0] === 'run') {
   // ensure the plugin is present — idempotent and quiet
   const s0 = p.spinner();
   s0.start('Making sure ultragoal is installed');
-  const a0 = claude(['plugin', 'marketplace', 'add', MARKETPLACE]);
-  if (a0.status !== 0) claude(['plugin', 'marketplace', 'update', MARKETPLACE_NAME]);
-  claude(['plugin', 'install', PLUGIN]);
+  const a0 = claude(['plugin', 'marketplace', 'add', CLAUDE_MARKETPLACE]);
+  if (a0.status !== 0) claude(['plugin', 'marketplace', 'update', CLAUDE_MARKETPLACE_NAME]);
+  claude(['plugin', 'install', CLAUDE_PLUGIN]);
   s0.stop('Plugin ready');
 
   const mode = safe ? ['--permission-mode', 'auto'] : ['--dangerously-skip-permissions'];
@@ -121,54 +275,83 @@ if (args[0] === 'run') {
 if (args[0] === 'update') {
   banner();
   p.intro(pc.bgBlue(pc.black(' ultragoal updater ')));
+  const targets = targetFlags() ?? ['claude'];
   const us = p.spinner();
-  us.start('Refreshing the marketplace');
-  const mk = claude(['plugin', 'marketplace', 'update', MARKETPLACE_NAME]);
-  if (mk.missing) {
-    us.stop(pc.red('Claude Code CLI not found'));
-    bail('Install Claude Code first: https://claude.com/claude-code');
-  }
-  if (mk.status !== 0) {
-    us.stop(pc.dim('Marketplace not registered'));
-    bail('ultragoal doesn\'t look installed — run: npx ultragoal');
-  }
-  us.stop('Marketplace refreshed');
-
-  // Update EVERY install of the plugin, not just user scope. Project-scoped
-  // installs pin their version per project and are skipped by Claude Code's
-  // startup auto-update, so they go stale silently — sweep them all here.
-  let installs = [];
-  try {
-    const reg = JSON.parse(readFileSync(join(homedir(), '.claude', 'plugins', 'installed_plugins.json'), 'utf8'));
-    installs = reg.plugins?.[PLUGIN] ?? [];
-  } catch {
-    /* registry unreadable — fall back to a plain user-scope update */
-  }
-  if (installs.length === 0) installs = [{ scope: 'user' }];
 
   let ok = 0, failed = 0, skipped = 0;
-  for (const inst of installs) {
-    const where = inst.projectPath ? `${inst.scope} scope · ${inst.projectPath}` : `${inst.scope} scope`;
-    if (inst.projectPath && !existsSync(inst.projectPath)) {
-      p.log.info(pc.dim(`Skipped ${where} — directory no longer exists`));
+
+  if (hasTarget(targets, 'claude')) {
+    us.start('Refreshing the Claude Code marketplace');
+    const mk = claude(['plugin', 'marketplace', 'update', CLAUDE_MARKETPLACE_NAME]);
+    if (mk.missing) {
+      us.stop(pc.dim('Claude Code CLI not found — skipped'));
       skipped++;
-      continue;
-    }
-    us.start(`Updating ${where}`);
-    const up = claude(['plugin', 'update', PLUGIN, '--scope', inst.scope], { cwd: inst.projectPath });
-    if ((up.status ?? 1) === 0) {
-      const line = ((up.stdout || '') + (up.stderr || '')).trim().split('\n').pop() || 'updated';
-      us.stop(`${where}: ${line.replace(/^[✔✖]\s*/, '').replace(/ \(.*\)\.?/, '').replace(/ Restart.*$/, '')}`);
-      ok++;
+    } else if (mk.status !== 0) {
+      us.stop(pc.dim('Claude Code marketplace not registered — skipped'));
+      skipped++;
     } else {
-      us.stop(pc.red(`${where}: update failed`));
-      failed++;
+      us.stop('Claude Code marketplace refreshed');
+
+      // Update EVERY Claude install, not just user scope. Project-scoped
+      // installs pin their version per project and are skipped by Claude Code's
+      // startup auto-update, so they go stale silently — sweep them all here.
+      let installs = [];
+      try {
+        const reg = JSON.parse(readFileSync(join(homedir(), '.claude', 'plugins', 'installed_plugins.json'), 'utf8'));
+        installs = reg.plugins?.[CLAUDE_PLUGIN] ?? [];
+      } catch {
+        /* registry unreadable — fall back to a plain user-scope update */
+      }
+      if (installs.length === 0) installs = [{ scope: 'user' }];
+
+      for (const inst of installs) {
+        const where = inst.projectPath ? `${inst.scope} scope · ${inst.projectPath}` : `${inst.scope} scope`;
+        if (inst.projectPath && !existsSync(inst.projectPath)) {
+          p.log.info(pc.dim(`Skipped ${where} — directory no longer exists`));
+          skipped++;
+          continue;
+        }
+        us.start(`Updating Claude Code ${where}`);
+        const up = claude(['plugin', 'update', CLAUDE_PLUGIN, '--scope', inst.scope], { cwd: inst.projectPath });
+        if ((up.status ?? 1) === 0) {
+          const line = ((up.stdout || '') + (up.stderr || '')).trim().split('\n').pop() || 'updated';
+          us.stop(`${where}: ${line.replace(/^[✔✖]\s*/, '').replace(/ \(.*\)\.?/, '').replace(/ Restart.*$/, '')}`);
+          ok++;
+        } else {
+          us.stop(pc.red(`${where}: update failed`));
+          failed++;
+        }
+      }
     }
   }
 
-  if (ok === 0) bail('No install could be updated — is it installed? Run: npx ultragoal');
+  if (hasTarget(targets, 'codex')) {
+    us.start('Refreshing the Codex marketplace');
+    const mk = codex(['plugin', 'marketplace', 'upgrade', CODEX_MARKETPLACE_NAME]);
+    if (mk.missing) {
+      us.stop(pc.dim('Codex CLI not found — skipped'));
+      skipped++;
+    } else if (mk.status !== 0) {
+      us.stop(pc.dim('Codex marketplace not registered — skipped'));
+      skipped++;
+    } else {
+      us.stop('Codex marketplace refreshed');
+      us.start('Installing latest Codex plugin');
+      const add = codex(['plugin', 'add', CODEX_PLUGIN]);
+      if ((add.status ?? 1) === 0) {
+        us.stop('Codex plugin updated');
+        ok++;
+      } else {
+        us.stop(pc.red('Codex plugin update failed'));
+        failed++;
+      }
+    }
+  }
+
+  if (ok === 0 && skipped === 0) bail('No install could be updated — is it installed? Run: npx ultragoal');
   const tally = [`${ok} updated`, skipped && `${skipped} skipped`, failed && `${failed} failed`].filter(Boolean).join(', ');
-  p.outro(pc.green(`ultragoal is up to date (${tally}).`) + pc.dim(' Restart Claude Code sessions to apply.'));
+  const restart = hasTarget(targets, 'claude') ? ' Restart Claude Code sessions to apply.' : '';
+  p.outro(pc.green(`ultragoal update finished (${tally}).`) + pc.dim(restart));
   process.exit(0);
 }
 
@@ -176,19 +359,42 @@ if (args[0] === 'update') {
 if (args[0] === 'uninstall') {
   banner();
   p.intro(pc.bgMagenta(pc.black(' ultragoal uninstaller ')));
+  const targets = targetFlags() ?? ['claude', 'codex'];
 
   const us = p.spinner();
-  us.start('Removing the plugin');
-  const res = claude(['plugin', 'uninstall', PLUGIN]);
-  if (res.missing) {
-    us.stop(pc.red('Claude Code CLI not found'));
-    bail('Nothing to uninstall from.');
-  }
-  us.stop(res.status === 0 ? 'Plugin removed' : pc.dim('Plugin was not installed'));
+  let touched = false;
 
-  us.start('Removing the marketplace entry');
-  const mk = claude(['plugin', 'marketplace', 'remove', MARKETPLACE_NAME]);
-  us.stop(mk.status === 0 ? 'Marketplace removed' : pc.dim('Marketplace was not registered'));
+  if (hasTarget(targets, 'claude')) {
+    us.start('Removing the Claude Code plugin');
+    const res = claude(['plugin', 'uninstall', CLAUDE_PLUGIN]);
+    if (res.missing) {
+      us.stop(pc.dim('Claude Code CLI not found — skipped'));
+    } else {
+      touched = true;
+      us.stop(res.status === 0 ? 'Claude Code plugin removed' : pc.dim('Claude Code plugin was not installed'));
+
+      us.start('Removing the Claude Code marketplace entry');
+      const mk = claude(['plugin', 'marketplace', 'remove', CLAUDE_MARKETPLACE_NAME]);
+      us.stop(mk.status === 0 ? 'Claude Code marketplace removed' : pc.dim('Claude Code marketplace was not registered'));
+    }
+  }
+
+  if (hasTarget(targets, 'codex')) {
+    us.start('Removing the Codex plugin');
+    const res = codex(['plugin', 'remove', CODEX_PLUGIN]);
+    if (res.missing) {
+      us.stop(pc.dim('Codex CLI not found — skipped'));
+    } else {
+      touched = true;
+      us.stop(res.status === 0 ? 'Codex plugin removed' : pc.dim('Codex plugin was not installed'));
+
+      us.start('Removing the Codex marketplace entry');
+      const mk = codex(['plugin', 'marketplace', 'remove', CODEX_MARKETPLACE_NAME]);
+      us.stop(mk.status === 0 ? 'Codex marketplace removed' : pc.dim('Codex marketplace was not registered'));
+    }
+  }
+
+  if (!touched) bail('Nothing to uninstall from: none of the selected CLIs were found.');
 
   // Per-repo state: yours by default — only deleted on explicit request.
   const root = process.cwd();
@@ -229,7 +435,7 @@ if (args[0] === 'uninstall') {
     }
   }
 
-  p.outro(pc.green('ultragoal is fully uninstalled.') + pc.dim(' Reinstall anytime: npx ultragoal'));
+  p.outro(pc.green(`ultragoal uninstall finished for ${targetList(targets)}.`) + pc.dim(' Reinstall anytime: npx ultragoal'));
   process.exit(0);
 }
 
@@ -501,52 +707,23 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 // ------------------------------------------------------------------ main ---
 banner();
 p.intro(pc.bgCyan(pc.black(' ultragoal installer ')));
+const installTargets = await chooseInstallTargets();
+p.log.info(`Installing for: ${targetList(installTargets)}`);
 
-// 1. Claude Code present?
 const s = p.spinner();
-s.start('Checking for Claude Code');
-const probe = claude(['--version']);
-if (probe.missing) {
-  s.stop(pc.red('Claude Code CLI not found'));
-  bail('Install Claude Code first: https://claude.com/claude-code');
-}
-s.stop(`Claude Code ${pc.dim((probe.stdout || '').trim().split(' ')[0] || 'found')}`);
+const claudeScope = hasTarget(installTargets, 'claude') ? await chooseClaudeScope() : null;
 
-// 2. Scope — project by default; --global opts into machine-wide install
-let scope = flag('--global') ? 'user' : 'project';
-if (interactive && !flag('--project') && !flag('--global')) {
-  const pick = await p.select({
-    message: 'Where should it be installed?',
-    options: [
-      { value: 'project', label: 'Only this project', hint: 'recommended — written to .claude/settings.json, teammates get it via git' },
-      { value: 'user', label: 'Globally', hint: 'every project on this machine' },
-    ],
-  });
-  if (p.isCancel(pick)) bail('Cancelled.');
-  scope = pick;
-}
+if (hasTarget(installTargets, 'claude')) installClaudePlugin(s, claudeScope);
+if (hasTarget(installTargets, 'codex')) installCodexPlugin(s);
 
-// 3. Marketplace + plugin
-s.start('Adding the ultragoal marketplace');
-const add = claude(['plugin', 'marketplace', 'add', MARKETPLACE]);
-if (add.status !== 0) claude(['plugin', 'marketplace', 'update', MARKETPLACE_NAME]);
-s.stop('Marketplace ready');
-
-s.start('Installing the plugin');
-let res = claude(['plugin', 'install', PLUGIN, '--scope', scope]);
-if (res.status !== 0) res = claude(['plugin', 'update', PLUGIN]);
-if ((res.status ?? 1) !== 0) {
-  s.stop(pc.red('Install failed'));
-  bail(`Try the manual route:\n  claude plugin marketplace add ${MARKETPLACE}\n  claude plugin install ${PLUGIN}`);
-}
-s.stop(`Plugin installed ${pc.dim(`(${scope} scope)`)}`);
-
-// 4. Optional repo pre-configuration
+// Optional repo pre-configuration. This writes CLAUDE.md, so it is offered only
+// when the Claude Code surface is being installed.
 let didSetup = false;
 const root = process.cwd();
 const alreadySetup = existsSync(join(root, '.ultragoal'));
-let wantSetup = flag('--setup');
-if (interactive && !alreadySetup && !wantSetup) {
+const canSetupRepo = hasTarget(installTargets, 'claude');
+let wantSetup = canSetupRepo && flag('--setup');
+if (interactive && canSetupRepo && !alreadySetup && !wantSetup) {
   const yn = await p.confirm({
     message: 'Pre-configure this repo now? (picks your working style, scaffolds .ultragoal/ — ~30s)',
     initialValue: true,
@@ -559,7 +736,7 @@ if (interactive && !alreadySetup && !wantSetup) {
 // knobs and the CLAUDE.md block are rewritten; memory, goals, and hand-tuned
 // config rows (budget, cadence, interview depth) are preserved.
 let wantReconfig = alreadySetup && wantSetup;
-if (interactive && alreadySetup && !wantReconfig) {
+if (interactive && canSetupRepo && alreadySetup && !wantReconfig) {
   const yn = await p.confirm({
     message: 'This repo is already configured — reconfigure its working style? (rewrites knobs + CLAUDE.md block; memory and goals untouched)',
     initialValue: false,
@@ -598,11 +775,21 @@ if ((wantSetup && !alreadySetup) || wantReconfig) {
   }
 } else if (alreadySetup) {
   p.log.info('This repo already has .ultragoal/ — leaving it untouched. Reconfigure anytime: npx ultragoal --setup, or /ultragoal:setup in a session.');
+} else if (!canSetupRepo && flag('--setup')) {
+  p.log.info('--setup is Claude Code repo setup and was skipped for a Codex-only install.');
+}
+
+const nextSteps = [];
+if (hasTarget(installTargets, 'claude')) {
+  nextSteps.push(`  ${pc.cyan('/ultragoal:goal')} ${pc.dim('<your messy brain dump — a raw voice transcript is fine>')}`);
+}
+if (hasTarget(installTargets, 'codex')) {
+  nextSteps.push(`  ${pc.cyan('$ultragoal-goal')} ${pc.dim('<your messy brain dump — Codex turns it into a native Goal-mode contract>')}`);
 }
 
 p.outro(
-  `${pc.green('ultragoal is ready.')} Open Claude Code and describe what you want:\n\n` +
-    `  ${pc.cyan('/ultragoal:goal')} ${pc.dim('<your messy brain dump — a raw voice transcript is fine>')}\n\n` +
-    `${didSetup ? '' : pc.dim('First goal in a repo asks 5 quick style questions (or run npx ultragoal --setup).\n')}` +
+  `${pc.green('ultragoal is ready.')} Start from:\n\n` +
+    `${nextSteps.join('\n')}\n\n` +
+    `${didSetup || !canSetupRepo ? '' : pc.dim('First Claude goal in a repo asks 5 quick style questions (or run npx ultragoal --setup).\n')}` +
     pc.dim(`Docs: ${DOCS}`)
 );

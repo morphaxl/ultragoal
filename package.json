@@ -1,7 +1,7 @@
 {
   "name": "ultragoal",
-  "version": "1.6.0",
-  "description": "Goal loops for Claude Code — tell Claude what you want once; it works until the job is verifiably done, then saves what it learned. One-command interactive installer for the ultragoal plugin.",
+  "version": "1.7.0",
+  "description": "Goal loops for Claude Code and Codex — turn a brief into a verifiable goal, keep working until it holds, and save what the agent learned.",
   "bin": {
     "ultragoal": "installer/cli.mjs"
   },
@@ -30,6 +30,7 @@
   "keywords": [
     "claude",
     "claude-code",
+    "codex",
     "plugin",
     "goal",
     "loop",

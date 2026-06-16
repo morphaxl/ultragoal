@@ -1,6 +1,6 @@
 {
   "name": "ultragoal-codex",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Codex-native Ultragoal bridge: draft a rubric-backed goal, audit it, then run it through Codex Goal mode.",
   "author": {
     "name": "morphaxl",

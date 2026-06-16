@@ -45,7 +45,7 @@ And the pitch in one line: **you never have to learn prompt engineering — or l
 npx ultragoal
 ```
 
-An interactive installer walks you through it: confirm where it goes — **this project is the default** (it lands in `.claude/settings.json`, so teammates get it through git; `--global` installs machine-wide instead) — and optionally pre-configure the repo: five working-style questions, and it scaffolds `.ultragoal/` plus the CLAUDE.md block on the spot. `--yes` skips all prompts for CI; `--setup` pre-configures the repo; `uninstall` removes it. It wraps Claude Code's native plugin system — prefer that route directly? Inside Claude Code:
+An interactive installer walks you through it: choose **Claude Code**, **Codex**, or **both**. Claude Code remains the default for non-interactive installs (`--yes`) and can install to this project by default (it lands in `.claude/settings.json`, so teammates get it through git) or machine-wide with `--global`. If you pick Claude Code, the installer can also pre-configure the repo: five working-style questions, `.ultragoal/`, and the managed `CLAUDE.md` block. `--codex` installs only the Codex native Goal-mode bridge; `--all` installs both; `uninstall` removes the selected plugins and marketplace entries. Prefer the Claude route directly? Inside Claude Code:
 
 ```text
 /plugin marketplace add morphaxl/ultragoal
@@ -65,6 +65,18 @@ install the Claude Stop-hook loop. Instead, it gives Codex one skill,
 `$ultragoal-goal`, that drafts a file-backed rubric under
 `.ultragoal/codex-goals/`, runs the same pre-arm rubric audit, then attaches
 Codex's native `/goal` / Goal mode to that contract.
+
+```bash
+npx ultragoal --codex
+```
+
+Or install both surfaces in one pass:
+
+```bash
+npx ultragoal --all
+```
+
+The manual Codex route is still available:
 
 ```bash
 codex plugin marketplace add morphaxl/ultragoal
@@ -89,7 +101,7 @@ npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contra
 
 This is how ultragoal is meant to be used: one command from terminal to running goal loop, at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
 
-Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual sweep — every install, user scope plus all per-project pins, in one go. Uninstall with `npx ultragoal uninstall` (add `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
+Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual Claude sweep — every install, user scope plus all per-project pins, in one go; use `npx ultragoal update --codex` or `--all` for the Codex bridge. Uninstall with `npx ultragoal uninstall` (tries both installed surfaces; add `--codex` or `--claude` to target one, and `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
 ## Sixty seconds to your first goal
 
@@ -238,7 +250,7 @@ Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](
 
 **Can I run it unattended?** Yes — that's the recommended mode: `npx ultragoal run "<brief>"` launches at full autonomy, and `--headless` runs the loop to completion with no UI at all. The discipline lives in the rubric, the verifier, and the budget — not in you approving each tool call.
 
-**Uninstall?** `npx ultragoal uninstall` removes the plugin and marketplace entry; your `.ultragoal/` state stays — it's yours. Add `--purge` to delete a repo's state too (restores CLAUDE.md byte-for-byte).
+**Uninstall?** `npx ultragoal uninstall` removes the Claude and/or Codex plugin plus marketplace entries it can find; your `.ultragoal/` state stays — it's yours. Add `--codex` or `--claude` to target one surface, and `--purge` to delete a repo's state too.
 
 ## License
 
