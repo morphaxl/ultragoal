@@ -5,7 +5,9 @@ This repo is the **ultragoal** Claude Code plugin (goal loops: rubric-gated auto
 ## Layout
 
 ```
-.claude-plugin/   plugin.json (manifest) + marketplace.json (self-hosting marketplace)
+.claude-plugin/   Claude plugin.json (manifest) + marketplace.json (self-hosting marketplace)
+.agents/plugins/  Codex marketplace.json for the Codex-native bridge plugin
+plugins/ultragoal-codex/  Codex plugin: skill bridge to native Codex Goal mode
 skills/           the skills: goal, status, stop, remember, compact, setup, verify
   goal/           flagship; supporting files: rubric-guide, experiment-guide, goal-template, rubrics/ (the rubric library)
 agents/           verifier.md — the fresh-context verifier subagent (also the 3-lens panel at rigor=max)
@@ -23,7 +25,7 @@ State the plugin writes into a *user's* repo (`.ultragoal/`, CLAUDE.md block) is
 ## Develop & test
 
 - **Engine tests:** `bash tests/gate-test.sh` — must end `failed: 0`. The gate and its tests change together, always.
-- **Rubric audit tests:** `npm test` — covers `scripts/rubric-audit.mjs`, the pre-arm rubric linter for weak specs.
+- **Rubric audit + Codex plugin tests:** `npm test` — covers `scripts/rubric-audit.mjs`, the pre-arm rubric linter for weak specs, and the Codex plugin bridge metadata.
 - **Manifest valid:** `claude plugin validate .`
 - **Smoke-test loading:** from another directory, `claude --plugin-dir <repo> -p "list ultragoal skills" --allowedTools ""` — expect 7 skills + the verifier.
 - **Installer:** `node --check installer/cli.mjs`; full flow `node installer/cli.mjs --yes --setup` in a throwaway git repo.
@@ -35,7 +37,7 @@ State the plugin writes into a *user's* repo (`.ultragoal/`, CLAUDE.md block) is
 
 To cut a release:
 
-1. Bump the version in **both** `package.json` and `.claude-plugin/plugin.json` (keep them identical).
+1. Bump the version in **all** shipped manifests: `package.json`, `.claude-plugin/plugin.json`, and `plugins/ultragoal-codex/.codex-plugin/plugin.json` (keep them identical).
 2. `bash tests/gate-test.sh && claude plugin validate .` — green.
 3. Commit and push to `main`.
 4. `gh release create vX.Y.Z --title "ultragoal vX.Y.Z" --latest --notes "<changes>"`.

@@ -1,0 +1,23 @@
+{
+  "name": "ultragoal-codex",
+  "version": "1.6.0",
+  "description": "Codex-native Ultragoal bridge: draft a rubric-backed goal, audit it, then run it through Codex Goal mode.",
+  "author": {
+    "name": "morphaxl",
+    "url": "https://github.com/morphaxl"
+  },
+  "homepage": "https://github.com/morphaxl/ultragoal",
+  "repository": "https://github.com/morphaxl/ultragoal",
+  "license": "MIT",
+  "keywords": ["codex", "goal", "rubric", "verification", "workflow"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Ultragoal for Codex",
+    "shortDescription": "Rubric-backed goals for Codex native Goal mode.",
+    "longDescription": "Drafts an ultragoal-style spec with checkable rubric, audits it for weak proof, then arms Codex native Goal mode against the file-backed contract.",
+    "developerName": "morphaxl",
+    "category": "Productivity",
+    "capabilities": ["Skills", "Workflow"],
+    "defaultPrompt": "Use ultragoal-goal to turn this task into a rubric-backed Codex goal."
+  }
+}

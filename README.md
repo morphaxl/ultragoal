@@ -58,6 +58,29 @@ Want it available in every project on your machine instead of just this one?
 npx ultragoal --global
 ```
 
+### Codex native Goal mode
+
+Ultragoal also ships a Codex-native bridge as a separate plugin. It does **not**
+install the Claude Stop-hook loop. Instead, it gives Codex one skill,
+`$ultragoal-goal`, that drafts a file-backed rubric under
+`.ultragoal/codex-goals/`, runs the same pre-arm rubric audit, then attaches
+Codex's native `/goal` / Goal mode to that contract.
+
+```bash
+codex plugin marketplace add morphaxl/ultragoal
+codex plugin add ultragoal-codex@morphaxl
+```
+
+Then start a new Codex session and invoke:
+
+```text
+$ultragoal-goal turn this brain dump into a rubric-backed Codex goal: ...
+```
+
+Use this when you want ultragoal's spec/rubric discipline in Codex without
+replacing Codex's own goal lifecycle, browser use, computer use, or subagent
+tools.
+
 ### Autopilot — the recommended way to run goals
 
 ```bash
