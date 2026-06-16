@@ -38,6 +38,18 @@
 
 9. **Checks emit one decisive line.** Prefer commands whose output settles the item at a glance — an exit code, a single number, a PASS/FAIL. Wrap noisy commands (`cmd > /tmp/x.log 2>&1 && echo PASS || echo FAIL`): the gate feeds check context back into the loop every turn, and raw dumps poison it. A flawed or noisy signal gets faithfully optimized — the loop is only as honest as what the check prints.
 
+## Mechanical pre-arm audit
+
+When the `scripts/rubric-audit.mjs` helper is available, run it against the draft goal before asking the user to arm:
+
+```bash
+node <goal-skill-dir>/scripts/rubric-audit.mjs .ultragoal/goals/active/<slug>/goal.md
+```
+
+Resolve `<goal-skill-dir>` to the directory containing `skills/goal/SKILL.md`; in the ultragoal source checkout, `node scripts/rubric-audit.mjs <goal>` is the same audit. The helper is intentionally conservative. It blocks only the failures that most often create false completion: no exact check command or structured manual/agent-run protocol, placeholder commands, missing verifier or stop conditions, UI/runtime claims proved by static checks, mock-only external seams, and explicit runtime gaps. Warnings are not automatic failures; they are prompts to either strengthen the rubric or record the tradeoff in Context so the verifier can see it was deliberate.
+
+Run the audit after every meaningful rubric edit. If it flags a blocker, revise the draft before the recap; an armed weak rubric becomes the environment the loop optimizes.
+
 ## Shape of a good item
 
 ```

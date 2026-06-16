@@ -1,6 +1,6 @@
 # Rubric library
 
-Research-backed starting points — every threshold cited, every item carrying its check command. **Adapt, don't transplant**: replace placeholder commands with this repo's real ones, keep thresholds unless the project has better-evidenced targets, and delete items that don't apply. Templates note relevant skills to pair (install more via `npx skills add` from skills.sh; `find-skills` discovers matches).
+Research-backed starting points — every threshold cited, every item carrying its check command. **Adapt, don't transplant**: replace placeholder commands with this repo's real ones, keep thresholds unless the project has better-evidenced targets, and delete items that don't apply. Before arming, pair the chosen template with [../qa-capability-map.md](../qa-capability-map.md) and run the skill-local audit (`node <goal-skill-dir>/scripts/rubric-audit.mjs <draft-goal.md>`). Templates note relevant skills to pair (install more via `npx skills add` from skills.sh; `find-skills` discovers matches).
 
 | Template | Use when | Kind |
 |---|---|---|

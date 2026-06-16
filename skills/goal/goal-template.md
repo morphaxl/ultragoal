@@ -10,7 +10,7 @@ status: active                 # written as "draft" until the user arms it; the 
 kind: task | experiment        # experiment = measure-and-ratchet loop, see experiment-guide.md
 budget: <max gate-checked turns, from the chosen depth tier — quick ~10 · standard 25 · deep 60+; default from .ultragoal/config.md>
 session: <the arming session's ID — the gate enforces only this session's goal; another session can take it over by rewriting this field>
-verify: on | off               # from config's verification knob; off = checked rubric suffices, no verifier pass
+verify: on | off | panel       # from config/rigor; off = checked rubric suffices, panel = 3-lens verifier sign-off
 created: <YYYY-MM-DD>
 ---
 

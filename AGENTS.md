@@ -23,6 +23,7 @@ State the plugin writes into a *user's* repo (`.ultragoal/`, CLAUDE.md block) is
 ## Develop & test
 
 - **Engine tests:** `bash tests/gate-test.sh` — must end `failed: 0`. The gate and its tests change together, always.
+- **Rubric audit tests:** `npm test` — covers `scripts/rubric-audit.mjs`, the pre-arm rubric linter for weak specs.
 - **Manifest valid:** `claude plugin validate .`
 - **Smoke-test loading:** from another directory, `claude --plugin-dir <repo> -p "list ultragoal skills" --allowedTools ""` — expect 7 skills + the verifier.
 - **Installer:** `node --check installer/cli.mjs`; full flow `node installer/cli.mjs --yes --setup` in a throwaway git repo.

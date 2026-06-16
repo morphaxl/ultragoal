@@ -1,9 +1,13 @@
 {
   "name": "ultragoal",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Goal loops for Claude Code — tell Claude what you want once; it works until the job is verifiably done, then saves what it learned. One-command interactive installer for the ultragoal plugin.",
   "bin": {
     "ultragoal": "installer/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check installer/cli.mjs && node --check scripts/rubric-audit.mjs && npm test"
   },
   "files": [
     "installer/cli.mjs"
