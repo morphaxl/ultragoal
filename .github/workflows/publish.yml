@@ -30,6 +30,9 @@ jobs:
           test "$PKG" = "${{ github.event.release.tag_name }}"
       - run: npm ci
       - run: bash tests/gate-test.sh
+      - run: |
+          bash tests/codex-gate-test.sh
+          bash tests/codex-hook-smoke.sh
       - run: npm test
       - run: npm publish --provenance --access public
         env:

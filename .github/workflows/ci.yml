@@ -12,6 +12,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Gate engine tests
         run: bash tests/gate-test.sh
+      - name: Codex gate smoke tests
+        run: |
+          bash tests/codex-gate-test.sh
+          bash tests/codex-hook-smoke.sh
       - uses: actions/setup-node@v5
         with:
           node-version: 22

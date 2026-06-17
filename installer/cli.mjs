@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, rmSync, unlinkSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
@@ -13,6 +13,7 @@ const CODEX_MARKETPLACE = 'morphaxl/ultragoal';
 const CODEX_MARKETPLACE_NAME = 'morphaxl';
 const CODEX_PLUGIN = 'ultragoal-codex@morphaxl';
 const DOCS = 'https://github.com/morphaxl/ultragoal';
+let CODEX_BIN = null;
 
 const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
@@ -48,8 +49,35 @@ function claude(cmdArgs, opts) {
   return runBin('claude', cmdArgs, opts);
 }
 
+function unique(items) {
+  return [...new Set(items.filter(Boolean))];
+}
+
+function resolveCodexBin() {
+  if (CODEX_BIN) return CODEX_BIN;
+  const pathCandidates = (process.env.PATH || '')
+    .split(delimiter)
+    .filter(Boolean)
+    .map((dir) => join(dir, process.platform === 'win32' ? 'codex.cmd' : 'codex'));
+  const candidates = unique([
+    process.env.ULTRAGOAL_CODEX_BIN,
+    ...pathCandidates,
+    join(homedir(), '.bun', 'bin', process.platform === 'win32' ? 'codex.cmd' : 'codex'),
+  ]);
+  for (const candidate of candidates) {
+    if (candidate !== 'codex' && !existsSync(candidate)) continue;
+    const probe = runBin(candidate, ['--version']);
+    if ((probe.status ?? 1) === 0) {
+      CODEX_BIN = candidate;
+      return CODEX_BIN;
+    }
+  }
+  CODEX_BIN = 'codex';
+  return CODEX_BIN;
+}
+
 function codex(cmdArgs, opts) {
-  return runBin('codex', cmdArgs, opts);
+  return runBin(resolveCodexBin(), cmdArgs, opts);
 }
 
 function bail(msg) {
@@ -147,7 +175,7 @@ function listGoalFiles(base) {
   return files;
 }
 
-function findActiveGoalFile(root) {
+function findCurrentGoalFile(root, sinceMs = 0) {
   const ug = join(root, '.ultragoal');
   const candidates = [
     ...listGoalFiles(join(ug, 'goals', 'active')),
@@ -163,8 +191,9 @@ function findActiveGoalFile(root) {
       }
     })
     .filter(Boolean)
-    .filter(({ text }) => readFrontmatterField(text, 'status') === 'active')
-    .filter(({ text, file }) => !file.includes(`${join('.ultragoal', 'codex-goals')}`) || ['', 'active'].includes(readFrontmatterField(text, 'codex_goal')));
+    .filter(({ text }) => ['active', 'done'].includes(readFrontmatterField(text, 'status')))
+    .filter(({ mtime }) => !sinceMs || mtime >= sinceMs)
+    .filter(({ text, file }) => !file.includes(`${join('.ultragoal', 'codex-goals')}`) || ['', 'active', 'done'].includes(readFrontmatterField(text, 'codex_goal')));
   active.sort((a, b) => b.mtime - a.mtime);
   return active[0] || null;
 }
@@ -226,7 +255,7 @@ function evaluateGoalFile(goal) {
     };
   }
   return {
-    done: false,
+    done: readFrontmatterField(text, 'status') === 'done',
     file,
     prompt: `Ultragoal "${slug}" is verified in ${file}. Distill durable lessons if any, set status: done, archive or record completion, then report the outcome.`,
   };
@@ -236,25 +265,18 @@ function runCodexHeadlessLoop({ prompt, safe }) {
   const approval = safe ? 'on-request' : 'never';
   const maxTurns = Number.parseInt(process.env.ULTRAGOAL_CODEX_RUNNER_MAX_TURNS || '25', 10);
   const baseArgs = ['--sandbox', 'workspace-write', '--ask-for-approval', approval, '--dangerously-bypass-hook-trust'];
-  let res = spawnSync('codex', [...baseArgs, 'exec', prompt], { stdio: 'inherit' });
+  const startedAt = Date.now() - 2000;
+  let res = codex([...baseArgs, 'exec', prompt], { quiet: false });
   if ((res.status ?? 1) !== 0) return res.status ?? 1;
 
   for (let i = 1; i <= maxTurns; i++) {
     const root = findUltragoalRoot(process.cwd());
-    const active = findActiveGoalFile(root);
-    const state = evaluateGoalFile(active);
+    const current = findCurrentGoalFile(root, startedAt);
+    const state = evaluateGoalFile(current);
     if (state.done) return 0;
     p.log.info(`Codex runner continuing Ultragoal (${i}/${maxTurns}): ${state.file || state.reason}`);
-    res = spawnSync('codex', [...baseArgs, 'exec', 'resume', '--last', state.prompt], { stdio: 'inherit' });
+    res = codex([...baseArgs, 'exec', 'resume', '--last', state.prompt], { quiet: false });
     if ((res.status ?? 1) !== 0) return res.status ?? 1;
-    const after = findActiveGoalFile(findUltragoalRoot(process.cwd()));
-    if (!after) return 0;
-    try {
-      const text = readFileSync(after.file, 'utf8');
-      if (readFrontmatterField(text, 'status') === 'done') return 0;
-    } catch {
-      return 0;
-    }
   }
 
   p.log.warn(`Codex runner reached ULTRAGOAL_CODEX_RUNNER_MAX_TURNS=${maxTurns}. Leaving the active goal for resume.`);
@@ -440,7 +462,7 @@ if (args[0] === 'run') {
       p.log.info('Codex interactive mode: review/trust bundled hooks with /hooks if Codex asks.');
       const codexArgs = ['--sandbox', 'workspace-write', '--ask-for-approval', 'on-request', prompt];
       p.outro('Handing you over to Codex with the Ultragoal skill prompt.');
-      const launch = spawnSync('codex', codexArgs, { stdio: 'inherit' });
+      const launch = codex(codexArgs, { quiet: false });
       process.exit(launch.status ?? 0);
     }
   }

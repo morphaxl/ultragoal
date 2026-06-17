@@ -57,6 +57,21 @@ EOF
     ;;
   *" exec "*)
     mkdir -p .ultragoal/codex-goals/demo
+    if [ "$FAKE_CODEX_DONE_BYPASS" = "1" ]; then
+      cat > .ultragoal/codex-goals/demo/goal.md <<'EOF'
+---
+slug: demo
+status: done
+codex_goal: active
+verify: off
+---
+# Rubric
+- [ ] item - check: \`true\` exits 0
+# Stop conditions
+- done
+EOF
+      exit 0
+    fi
     cat > .ultragoal/codex-goals/demo/goal.md <<'EOF'
 ---
 slug: demo
@@ -104,6 +119,7 @@ test("run --codex --headless installs plugin and launches codex exec with hook t
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.deepEqual(calls, [
     "codex --version",
+    "codex --version",
     "codex plugin marketplace add morphaxl/ultragoal",
     "codex plugin add ultragoal-codex@morphaxl",
     "codex --sandbox workspace-write --ask-for-approval never --dangerously-bypass-hook-trust exec $ultragoal-goal make chat fast",
@@ -114,6 +130,7 @@ test("run --codex --safe uses interactive Codex with approval guardrails", () =>
   const { result, calls } = run(["run", "--codex", "--safe", "ship report"]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.deepEqual(calls, [
+    "codex --version",
     "codex --version",
     "codex plugin marketplace add morphaxl/ultragoal",
     "codex plugin add ultragoal-codex@morphaxl",
@@ -146,4 +163,33 @@ test("run --codex --headless resumes while an active goal remains incomplete", (
   assert.ok(calls.some((line) => line.includes(" exec $ultragoal-goal finish demo")));
   assert.ok(calls.some((line) => line.includes(" exec resume --last ")));
   assert.match(goal, /^status: done$/m);
+});
+
+test("run --codex --headless does not trust status done until rubric is actually valid", () => {
+  const root = mkdtempSync(join(tmpdir(), "ultragoal-codex-done-bypass-"));
+  const binDir = makeLoopingFakeCodex(root);
+  makeFakeBin(root, "claude");
+  const callLog = join(root, "calls.log");
+  const result = spawnSync(process.execPath, [cli, "run", "--codex", "--headless", "finish demo"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PATH: `${binDir}:${process.env.PATH}`,
+      CALL_LOG: callLog,
+      HOME: join(root, "home"),
+      NO_COLOR: "1",
+      ULTRAGOAL_CODEX_RUNNER_MAX_TURNS: "3",
+      FAKE_CODEX_DONE_BYPASS: "1",
+    },
+    encoding: "utf8",
+  });
+  const calls = readFileSync(callLog, "utf8").trim().split("\n").filter(Boolean);
+  const goal = readFileSync(join(root, ".ultragoal/codex-goals/demo/goal.md"), "utf8");
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.ok(calls.some((line) => line.includes(" exec resume --last ")));
+  assert.match(goal, /^status: done$/m);
+  assert.match(goal, /- \[x\] item/);
+  assert.match(goal, /evidence:/);
 });
