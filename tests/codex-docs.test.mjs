@@ -24,6 +24,17 @@ test("README and DESIGN document Codex hooks, runner, panel mode, and fallback",
   assert.match(docs, /fallback/i);
 });
 
+test("README documents Codex interview mode and headless defaulting", () => {
+  const docs = text("../README.md");
+  assert.match(docs, /Codex interactive/i);
+  assert.match(docs, /interview/i);
+  assert.match(docs, /recap/i);
+  assert.match(docs, /Arm goal/i);
+  assert.match(docs, /Headless Codex/i);
+  assert.match(docs, /does not ask/i);
+  assert.match(docs, /records? defaults/i);
+});
+
 test("CLI help documents Codex run usage", () => {
   const res = spawnSync(process.execPath, [fileURLToPath(new URL("../installer/cli.mjs", import.meta.url)), "--help"], {
     encoding: "utf8",
@@ -33,4 +44,6 @@ test("CLI help documents Codex run usage", () => {
   assert.match(res.stdout, /npx ultragoal run --codex/);
   assert.match(res.stdout, /Codex/);
   assert.match(res.stdout, /--headless/);
+  assert.match(res.stdout, /interactive interview/i);
+  assert.match(res.stdout, /records defaults/i);
 });

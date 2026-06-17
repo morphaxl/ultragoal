@@ -91,20 +91,28 @@ Then start a new Codex session and invoke:
 $ultragoal-goal turn this brain dump into a rubric-backed Codex goal: ...
 ```
 
+Codex interactive runs now use the same interview shape as Claude's goal front
+door. `npx ultragoal run --codex "<brief>"` starts Codex in interview mode: it
+consults memory and repo context, asks only the high-leverage questions whose
+answers change the contract, drafts the rubric, gives you a recap, then asks a
+standalone **Arm goal** confirmation before implementation begins.
+
 For an unattended Codex run, use the runner:
 
 ```bash
 npx ultragoal run --codex --headless "make chat load faster without breaking tests"
 ```
 
-Headless Codex runs use `codex exec` with a workspace-write sandbox, approval
-policy `never`, and `--dangerously-bypass-hook-trust` for this vetted plugin
-run. After each Codex turn, the runner inspects the active Ultragoal file; if
-unchecked rubric items, missing evidence, or missing verifier/panel verdicts
-remain, it continues with `codex exec resume --last` and the exact remaining
-work. If your Codex build honors Stop-hook blocking, the bundled gate keeps the
-turn loop moving like the Claude gate. If your build treats Stop hooks as
-advisory, this file-backed resume loop is the enforcement fallback.
+Headless Codex does not ask interview or arm questions. It records defaults for
+ambiguous choices in the goal file, then uses `codex exec` with a
+workspace-write sandbox, approval policy `never`, and
+`--dangerously-bypass-hook-trust` for this vetted plugin run. After each Codex
+turn, the runner inspects the active Ultragoal file; if unchecked rubric items,
+missing evidence, or missing verifier/panel verdicts remain, it continues with
+`codex exec resume --last` and the exact remaining work. If your Codex build
+honors Stop-hook blocking, the bundled gate keeps the turn loop moving like the
+Claude gate. If your build treats Stop hooks as advisory, this file-backed
+resume loop is the enforcement fallback.
 
 ### Autopilot — the recommended way to run goals
 
@@ -121,10 +129,12 @@ npx ultragoal run --codex "checkout is slow, get p95 under 200ms without breakin
 npx ultragoal run --codex --headless "checkout is slow, get p95 under 200ms without breaking contract tests"
 ```
 
-Interactive Codex launches with approval guardrails on so you can review `/hooks`.
-Headless Codex launches through `codex exec`; `--safe` switches approvals from
-`never` to `on-request`. Codex `--worktree` is intentionally not implemented
-yet — create a git worktree yourself, `cd` into it, and run the command there.
+Interactive Codex launches with approval guardrails on so you can review `/hooks`;
+it interviews, recaps, and waits for **Arm goal**. Headless Codex launches
+through `codex exec`; it does not ask questions and records defaults instead.
+`--safe` switches approvals from `never` to `on-request`. Codex `--worktree` is
+intentionally not implemented yet — create a git worktree yourself, `cd` into
+it, and run the command there.
 
 Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual Claude sweep — every install, user scope plus all per-project pins, in one go; use `npx ultragoal update --codex` or `--all` for the Codex loop. Uninstall with `npx ultragoal uninstall` (tries both installed surfaces; add `--codex` or `--claude` to target one, and `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 

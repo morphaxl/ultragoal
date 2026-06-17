@@ -267,6 +267,13 @@ function evaluateGoalFile(goal) {
   };
 }
 
+function codexGoalPrompt(brief, { headless = false } = {}) {
+  if (headless) {
+    return `$ultragoal-goal MODE: headless-autonomous. Do not ask the user questions. Make and record explicit defaults in the goal file for ambiguity, then arm and execute. Brief: ${brief}`;
+  }
+  return `$ultragoal-goal MODE: interactive-interview. Consult memory and repo context, ask high-leverage questions when ambiguity matters, recap the draft contract, and wait for a standalone Arm goal confirmation before arming. Brief: ${brief}`;
+}
+
 function runCodexHeadlessLoop({ prompt, safe }) {
   const approval = safe ? 'on-request' : 'never';
   const maxTurns = Number.parseInt(process.env.ULTRAGOAL_CODEX_RUNNER_MAX_TURNS || '25', 10);
@@ -417,8 +424,11 @@ if (flag('--help') || flag('-h')) {
                                armed and --dangerously-skip-permissions (no prompts at all)
     npx ultragoal run --codex "<brief>"
                                Codex goal run: installs the Codex plugin, then launches Codex
-                               with the ultragoal skill; add --headless for codex exec
-                               (workspace-write, approvals never, hook-trust bypass)
+                               with the ultragoal skill in interactive interview mode;
+                               it recaps and asks Arm goal before implementation.
+                               Add --headless for codex exec automation
+                               (workspace-write, approvals never, hook-trust bypass);
+                               headless records defaults instead of asking questions.
         --safe                 auto mode instead: tools auto-approved, guardrails stay on
         --worktree             run in a fresh git worktree — isolated checkout, so
                                parallel goals on one repo can't collide
@@ -464,7 +474,7 @@ if (args[0] === 'run') {
     if (worktree) bail('Codex run does not support --worktree yet. Use git worktree manually, cd into it, then run npx ultragoal run --codex.');
     const s0 = p.spinner();
     installCodexPlugin(s0);
-    const prompt = `$ultragoal-goal ${brief}`;
+    const prompt = codexGoalPrompt(brief, { headless });
     if (headless) {
       p.log.info('Codex headless mode: workspace-write sandbox, plugin hook trust bypassed for this vetted run, with file-backed resume checks between turns.');
       p.outro('Running the Codex goal loop headless — output follows.');

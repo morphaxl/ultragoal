@@ -13,6 +13,7 @@ Use this skill to convert an open-ended request into a file-backed Ultragoal spe
 - Repository guidance (`AGENTS.md`) and any existing `.ultragoal/memory/` files.
 - Current Codex goal state, if `get_goal` is available.
 - Codex hook state if the user reports hook warnings; ask them to open `/hooks` only when trust is blocking the bundled gate.
+- Mode hint from `npx ultragoal run --codex`: `MODE: interactive-interview` or `MODE: headless-autonomous`.
 
 ## First Reads
 
@@ -30,10 +31,15 @@ If present in the repo, also read `.ultragoal/memory/MEMORY.md` and any active `
    - If another Codex goal is active and its objective differs, stop and ask whether to pause/clear it or only draft a spec. Do not call `create_goal` over an unrelated active goal.
 
 2. **Ground before asking**
-   - Read project instructions and inspect the code enough to avoid asking discoverable questions.
-   - Ask at most 1-3 narrow questions only when the answer changes the rubric or safety boundary. Use a recommended default when the repo and brief support one.
+   - Always consult memory and repo context before asking: read project instructions, `.ultragoal/config.md` if present, `.ultragoal/memory/MEMORY.md` if present, and enough relevant source/docs to avoid asking discoverable questions.
+   - Ask only questions whose answer changes what gets built, the rubric, the verification rung, or a safety/scope boundary. Use a recommended default when the repo and brief support one.
+   - Size the interview by ambiguity, stakes, and run length: clear reversible goals can get one short batch or no questions; vague, long, risky, release-grade, or user-specified "deep/max" goals need a deeper interview before the draft is armed.
 
-3. **Write the draft**
+3. **Mode-specific interview**
+   - **Interactive interview mode** (`MODE: interactive-interview`, default for `npx ultragoal run --codex "<brief>"`): act like Claude `/ultragoal:goal`. Ask decision-shaped questions with the recommended default first; include a one-line reason/tradeoff for each option. Prefer one concise batch, but use additional rounds for deep/high-stakes goals. After drafting, provide a recap before arming: objective, key decisions, assumptions/defaults you made, non-goals, verification plan, and budget/rigor choice. Then ask one standalone **Arm goal** question and wait for explicit user confirmation before setting `status: active`, `codex_goal: active`, or calling `create_goal`.
+   - **Headless autonomous mode** (`MODE: headless-autonomous`, used by `npx ultragoal run --codex --headless "<brief>"`): do not ask the user questions. Make conservative assumptions from the brief, repo, and memory; record explicit defaults in the goal file Context/Verification log so the user can audit what was assumed; then arm and execute. Headless must never wait for an arm prompt.
+
+4. **Write the draft**
    - Prefer `.ultragoal/goals/active/<slug>/goal.md` for new hook-backed goals so Claude and Codex use the same canonical active-goal shape.
    - If the repo already uses `.ultragoal/codex-goals/<slug>/goal.md`, continuing that legacy path is acceptable; the Codex gate enforces both locations.
    - Use `status: draft` until the user explicitly asks to start/arm/run it.
@@ -72,7 +78,7 @@ budget: <turn budget>
 # Verification log
 ```
 
-4. **Audit the draft**
+5. **Audit the draft**
 
 Run:
 
@@ -82,11 +88,12 @@ node <skill-dir>/scripts/rubric-audit.mjs .ultragoal/codex-goals/<slug>/goal.md
 
 Resolve `<skill-dir>` to this skill directory. A `BLOCKER` is a draft defect; revise and rerun before arming. A `WARN` must be fixed or recorded as an intentional tradeoff in Context.
 
-5. **Recap before arming**
+6. **Recap before arming**
    - Summarize the objective, key decisions, non-goals, proof strategy, and remaining warnings.
-   - Only arm when the user explicitly says to start/arm/run the goal, or when their original prompt explicitly requested creating/running a goal.
+   - In interactive interview mode, ask a standalone **Arm goal** question and wait for explicit user confirmation before arming.
+   - In headless autonomous mode, record the defaults/assumptions that replaced user answers and arm without asking.
 
-6. **Arm Codex native Goal mode**
+7. **Arm Codex native Goal mode**
    - If `create_goal` is available, call it with a compact objective under 4,000 characters. Do not set a token budget unless the user explicitly requested one.
    - After arming, update the draft frontmatter to `status: active` and `codex_goal: active`.
    - If the user requested "max rigor" or "panel verification", set `verify: panel`; completion then requires all three fresh-context lenses: `checks`, `refute`, and `constraints`.
@@ -102,7 +109,7 @@ Work from .ultragoal/codex-goals/<slug>/goal.md. Complete every unchecked rubric
 /goal Work from .ultragoal/codex-goals/<slug>/goal.md until every rubric item has evidence and the verifier item passes.
 ```
 
-7. **Execute**
+8. **Execute**
    - Keep `update_plan` synchronized with the next few rubric items.
    - Use browser, simulator, Computer Use, curl, tmux, or CLI evidence according to the QA map. Tests are supporting evidence, not proof of a UI or external-service claim.
    - After each passed item, update the checkbox and add one evidence line under it or in `# Verification log`.
@@ -111,7 +118,7 @@ Work from .ultragoal/codex-goals/<slug>/goal.md. Complete every unchecked rubric
    - Do not call `update_goal(status="complete")` until every rubric item, constraints check, and final verifier item is complete.
    - Use `update_goal(status="blocked")` only when the same blocking condition has repeated for the required Codex goal turns and no meaningful progress is possible.
 
-8. **Resume**
+9. **Resume**
    - On continuation or after compaction, read the goal file and `get_goal` before doing anything else.
    - Continue from unchecked rubric items; do not re-plan from scratch unless the file is incoherent or the user changes scope.
 

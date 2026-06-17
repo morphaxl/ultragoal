@@ -125,7 +125,7 @@ test("run --codex --headless refuses success when Codex creates no goal file", (
     "codex --version",
     "codex plugin marketplace add morphaxl/ultragoal",
     "codex plugin add ultragoal-codex@morphaxl",
-    "codex --sandbox workspace-write --ask-for-approval never --dangerously-bypass-hook-trust exec $ultragoal-goal make chat fast",
+    "codex --sandbox workspace-write --ask-for-approval never --dangerously-bypass-hook-trust exec $ultragoal-goal MODE: headless-autonomous. Do not ask the user questions. Make and record explicit defaults in the goal file for ambiguity, then arm and execute. Brief: make chat fast",
   ]);
   assert.match(result.stdout + result.stderr, /did not find a goal file/);
 });
@@ -138,8 +138,31 @@ test("run --codex --safe uses interactive Codex with approval guardrails", () =>
     "codex --version",
     "codex plugin marketplace add morphaxl/ultragoal",
     "codex plugin add ultragoal-codex@morphaxl",
-    "codex --sandbox workspace-write --ask-for-approval on-request $ultragoal-goal ship report",
+    "codex --sandbox workspace-write --ask-for-approval on-request $ultragoal-goal MODE: interactive-interview. Consult memory and repo context, ask high-leverage questions when ambiguity matters, recap the draft contract, and wait for a standalone Arm goal confirmation before arming. Brief: ship report",
   ]);
+});
+
+test("run --codex interactive launches with interview and explicit arm instructions", () => {
+  const { result, calls } = run(["run", "--codex", "ship report"]);
+  const launch = calls.at(-1);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(launch, /MODE: interactive-interview/);
+  assert.match(launch, /Consult memory and repo context/);
+  assert.match(launch, /recap the draft contract/);
+  assert.match(launch, /standalone Arm goal confirmation/);
+});
+
+test("run --codex --headless launches with autonomous default instructions", () => {
+  const { result, calls } = run(["run", "--codex", "--headless", "make chat fast"], {
+    ULTRAGOAL_CODEX_RUNNER_MAX_TURNS: "1",
+  });
+  const launch = calls.at(-1);
+
+  assert.equal(result.status, 1);
+  assert.match(launch, /MODE: headless-autonomous/);
+  assert.match(launch, /Do not ask the user questions/);
+  assert.match(launch, /record explicit defaults/);
 });
 
 test("run --codex --headless resumes while an active goal remains incomplete", () => {
@@ -164,7 +187,7 @@ test("run --codex --headless resumes while an active goal remains incomplete", (
   rmSync(root, { recursive: true, force: true });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.ok(calls.some((line) => line.includes(" exec $ultragoal-goal finish demo")));
+  assert.ok(calls.some((line) => line.includes(" exec $ultragoal-goal MODE: headless-autonomous") && line.includes("Brief: finish demo")));
   assert.ok(calls.some((line) => line.includes(" exec resume --last ")));
   assert.match(goal, /^status: done$/m);
 });
