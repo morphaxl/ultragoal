@@ -1,6 +1,6 @@
 {
   "name": "ultragoal-codex",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Ultragoal for Codex: rubric-backed goals with bundled Codex hooks, panel verification, and a headless runner fallback.",
   "author": {
     "name": "morphaxl",

@@ -199,7 +199,13 @@ function findCurrentGoalFile(root, sinceMs = 0) {
 }
 
 function evaluateGoalFile(goal) {
-  if (!goal) return { done: true, reason: 'no-active-goal' };
+  if (!goal) {
+    return {
+      done: false,
+      reason: 'no-current-goal',
+      prompt: 'No current Ultragoal goal file was found. Create or restore .ultragoal/codex-goals/<slug>/goal.md with a checkable rubric, record evidence, and do not report completion without a verified goal file.',
+    };
+  }
   const { file, text } = goal;
   const slug = readFrontmatterField(text, 'slug') || file;
   const rubric = section(text, 'Rubric');
@@ -257,7 +263,7 @@ function evaluateGoalFile(goal) {
   return {
     done: readFrontmatterField(text, 'status') === 'done',
     file,
-    prompt: `Ultragoal "${slug}" is verified in ${file}. Distill durable lessons if any, set status: done, archive or record completion, then report the outcome.`,
+    prompt: `Ultragoal "${slug}" is verified in ${file}. Distill durable lessons if any, set status: done in this goal file, leave the file in place for the runner to verify, then report the outcome.`,
   };
 }
 
@@ -269,12 +275,17 @@ function runCodexHeadlessLoop({ prompt, safe }) {
   let res = codex([...baseArgs, 'exec', prompt], { quiet: false });
   if ((res.status ?? 1) !== 0) return res.status ?? 1;
 
-  for (let i = 1; i <= maxTurns; i++) {
+  for (let i = 0; i <= maxTurns; i++) {
     const root = findUltragoalRoot(process.cwd());
     const current = findCurrentGoalFile(root, startedAt);
     const state = evaluateGoalFile(current);
+    if (!current) {
+      p.log.warn(`Codex runner did not find a goal file created or updated by this run (${state.reason}). Refusing to report success.`);
+      return 1;
+    }
     if (state.done) return 0;
-    p.log.info(`Codex runner continuing Ultragoal (${i}/${maxTurns}): ${state.file || state.reason}`);
+    if (i === maxTurns) break;
+    p.log.info(`Codex runner continuing Ultragoal (${i + 1}/${maxTurns}): ${state.file || state.reason}`);
     res = codex([...baseArgs, 'exec', 'resume', '--last', state.prompt], { quiet: false });
     if ((res.status ?? 1) !== 0) return res.status ?? 1;
   }

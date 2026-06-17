@@ -1,6 +1,6 @@
 {
   "name": "ultragoal",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Goal loops for Claude Code and Codex — turn a brief into a verifiable goal, keep working until it holds, and save what the agent learned.",
   "bin": {
     "ultragoal": "installer/cli.mjs"

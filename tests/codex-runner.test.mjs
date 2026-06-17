@@ -93,7 +93,7 @@ exit 0
   return binDir;
 }
 
-function run(args) {
+function run(args, extraEnv = {}) {
   const root = mkdtempSync(join(tmpdir(), "ultragoal-codex-run-"));
   const binDir = makeFakeBin(root, "codex");
   makeFakeBin(root, "claude");
@@ -106,6 +106,7 @@ function run(args) {
       CALL_LOG: callLog,
       HOME: join(root, "home"),
       NO_COLOR: "1",
+      ...extraEnv,
     },
     encoding: "utf8",
   });
@@ -114,9 +115,11 @@ function run(args) {
   return { result, calls };
 }
 
-test("run --codex --headless installs plugin and launches codex exec with hook trust bypass", () => {
-  const { result, calls } = run(["run", "--codex", "--headless", "make chat fast"]);
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+test("run --codex --headless refuses success when Codex creates no goal file", () => {
+  const { result, calls } = run(["run", "--codex", "--headless", "make chat fast"], {
+    ULTRAGOAL_CODEX_RUNNER_MAX_TURNS: "1",
+  });
+  assert.equal(result.status, 1);
   assert.deepEqual(calls, [
     "codex --version",
     "codex --version",
@@ -124,6 +127,7 @@ test("run --codex --headless installs plugin and launches codex exec with hook t
     "codex plugin add ultragoal-codex@morphaxl",
     "codex --sandbox workspace-write --ask-for-approval never --dangerously-bypass-hook-trust exec $ultragoal-goal make chat fast",
   ]);
+  assert.match(result.stdout + result.stderr, /did not find a goal file/);
 });
 
 test("run --codex --safe uses interactive Codex with approval guardrails", () => {
