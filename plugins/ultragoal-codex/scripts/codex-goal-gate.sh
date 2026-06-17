@@ -168,19 +168,21 @@ else
   if [ "$verify" = "off" ] && [ "$unchecked_count" -eq 0 ]; then verified=1; fi
 fi
 
-if [ "$unchecked_count" -gt 0 ] || [ "$verified" -ne 1 ]; then
+if [ "$unchecked_count" -gt 0 ] || [ "$no_evid" -gt 0 ] || [ "$verified" -ne 1 ]; then
   {
     echo "ULTRAGOAL CODEX GATE — goal \"$slug\" is still active ($used_str). Keep working."
     [ -n "$integrity_note" ] && echo "$integrity_note"
     if [ "$unchecked_count" -gt 0 ]; then
       echo "Remaining rubric items:"
       printf '%s\n' "$unchecked"
+    elif [ "$no_evid" -gt 0 ]; then
+      echo "$no_evid checked rubric item(s) have no evidence line. Add \"  - evidence: \`command\` -> key output\" under each checked item."
     elif [ "$verify" = "panel" ]; then
       echo "All boxes are checked, but panel verification is incomplete (missing/stale:$panel_missing). Required: ULTRAGOAL-VERIFIED: PASS rubric=$rubric_hash lens=<checks|refute|constraints> for all three lenses."
     else
       echo "All boxes are checked, but there is no valid verifier PASS bound to rubric=$rubric_hash."
     fi
-    if [ "$no_evid" -gt 0 ]; then
+    if [ "$no_evid" -gt 0 ] && [ "$unchecked_count" -gt 0 ]; then
       echo "$no_evid checked rubric item(s) have no evidence line. Add \"  - evidence: \`command\` -> key output\" under each checked item."
     fi
     echo "Protocol: record command evidence, use fresh verifier/panel sign-off, do not complete native Codex Goal mode until this file proves done. If this hook is advisory in your Codex build, run via: npx ultragoal run --codex --headless \"<brief>\" so the runner resumes against this same contract."

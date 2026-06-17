@@ -84,6 +84,13 @@ printf 'ULTRAGOAL-VERIFIED: PASS rubric=%s lens=constraints\n' "$H" >> "$GOAL"
 run_gate
 check "panel PASS reaches distill nudge" 2 "$RC" "rubric complete" "$ERR"
 
+fresh; write_goal active panel; sed 's/- \[ \]/- [x]/g' "$GOAL" > "$GOAL.tmp" && mv "$GOAL.tmp" "$GOAL"; H="$(rubric_hash)"
+printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s lens=checks\n' "$H" >> "$GOAL"
+printf 'ULTRAGOAL-VERIFIED: PASS rubric=%s lens=refute\n' "$H" >> "$GOAL"
+printf 'ULTRAGOAL-VERIFIED: PASS rubric=%s lens=constraints\n' "$H" >> "$GOAL"
+run_gate
+check "panel PASS without evidence still blocks" 2 "$RC" "no evidence line" "$ERR"
+
 fresh; write_goal active panel 1; run_gate; run_gate
 check "budget first overage warns" 2 "$RC" "budget reached" "$ERR"
 run_gate
