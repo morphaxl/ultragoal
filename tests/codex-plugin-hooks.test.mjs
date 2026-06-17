@@ -13,16 +13,23 @@ test("Codex plugin bundles default lifecycle hooks and referenced scripts", () =
   assert.equal(plugin.name, "ultragoal-codex");
   assert.ok(hooks.hooks.Stop);
   assert.ok(hooks.hooks.SessionStart);
+  assert.ok(hooks.hooks.SubagentStop);
 
   const stopCommand = hooks.hooks.Stop[0].hooks[0].command;
-  const sessionCommand = hooks.hooks.SessionStart[0].hooks[0].command;
+  const sessionCommands = hooks.hooks.SessionStart.map((entry) => entry.hooks[0].command).join("\n");
+  const subagentCommand = hooks.hooks.SubagentStop[0].hooks[0].command;
   assert.match(stopCommand, /codex-goal-gate\.sh/);
-  assert.match(sessionCommand, /codex-session-context\.sh/);
+  assert.match(sessionCommands, /codex-agent-bootstrap\.sh/);
+  assert.match(sessionCommands, /codex-session-context\.sh/);
+  assert.match(subagentCommand, /codex-executor-evidence-gate\.sh/);
+  assert.match(hooks.hooks.SubagentStop[0].matcher, /ultragoal-executor/);
   assert.match(stopCommand, /plugins\/cache/);
   assert.match(stopCommand, /plugins\/ultragoal-codex\/scripts/);
 
   assert.equal(exists("../plugins/ultragoal-codex/scripts/codex-goal-gate.sh"), true);
   assert.equal(exists("../plugins/ultragoal-codex/scripts/codex-session-context.sh"), true);
+  assert.equal(exists("../plugins/ultragoal-codex/scripts/codex-agent-bootstrap.sh"), true);
+  assert.equal(exists("../plugins/ultragoal-codex/scripts/codex-executor-evidence-gate.sh"), true);
   assert.match(text("../plugins/ultragoal-codex/scripts/codex-goal-gate.sh"), /FAIL OPEN/);
 });
 

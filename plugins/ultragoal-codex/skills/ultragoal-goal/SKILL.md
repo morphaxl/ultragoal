@@ -5,7 +5,7 @@ description: "Ultragoal for Codex. Use when the user asks for ultragoal in Codex
 
 # Ultragoal Goal for Codex
 
-Use this skill to convert an open-ended request into a file-backed Ultragoal spec, audit the rubric, then attach Codex native Goal mode to that spec. The Codex plugin bundles a Codex Stop hook gate plus a SessionStart context hook. When the installed Codex build honors Stop-hook blocking, the gate keeps Codex working until the rubric and verifier/panel verdict hold. When a Codex build treats hooks as advisory or hooks are not yet trusted, `npx ultragoal run --codex --headless "<brief>"` is the supported runner fallback: it starts Codex with the same file-backed contract, bypasses hook trust for that vetted automation run, inspects the active goal after each turn, and resumes with the remaining rubric/verifier work until the file is marked done or the runner cap is reached.
+Use this skill to convert an open-ended request into a file-backed Ultragoal spec, audit the rubric, then attach Codex native Goal mode to that spec. The Codex plugin bundles a Codex Stop hook gate, SessionStart context/bootstrap hooks, and a SubagentStop evidence gate for the `ultragoal-executor` role. When the installed Codex build honors Stop-hook blocking, the gate keeps Codex working until the rubric and verifier/panel verdict hold. When a Codex build treats hooks as advisory or hooks are not yet trusted, `npx ultragoal run --codex --headless "<brief>"` is the supported runner fallback: it starts Codex with the same file-backed contract, bypasses hook trust for that vetted automation run, inspects the active goal after each turn, and resumes with the remaining rubric/verifier work until the file is marked done or the runner cap is reached.
 
 ## Inputs
 
@@ -111,9 +111,11 @@ Work from .ultragoal/codex-goals/<slug>/goal.md. Complete every unchecked rubric
 
 8. **Execute**
    - Keep `update_plan` synchronized with the next few rubric items.
+   - In substantial goals, keep the root Codex thread as the orchestrator: planning, updating the goal file, integrating results, and deciding what proof is still missing. Delegate implementation subtasks to `ultragoal-executor` when Codex subagent tools are available. Give each executor prompt `TASK`, `DELIVERABLE`, `SCOPE`, and `VERIFY` sections.
+   - Every `ultragoal-executor` completion must create one non-empty receipt under `.ultragoal/evidence/` and end its final response with `ULTRAGOAL_EVIDENCE_RECORDED: <path>`. The bundled SubagentStop hook blocks missing, empty, symlinked, or out-of-tree receipts for a small retry budget.
    - Use browser, simulator, Computer Use, curl, tmux, or CLI evidence according to the QA map. Tests are supporting evidence, not proof of a UI or external-service claim.
    - After each passed item, update the checkbox and add one evidence line under it or in `# Verification log`.
-   - If `verify: panel`, dispatch or run three independent verifier passes at the end. Each must append exactly `ULTRAGOAL-VERIFIED: PASS rubric=<hash> lens=<checks|refute|constraints>` to the goal file, bound to the current rubric hash.
+   - Use `ultragoal-verifier` for independent verification when Codex subagent tools are available. If `verify: panel`, dispatch or run three independent verifier passes at the end. Each must append exactly `ULTRAGOAL-VERIFIED: PASS rubric=<hash> lens=<checks|refute|constraints>` to the goal file, bound to the current rubric hash.
    - If Codex prints a hook-trust warning, tell the user to run `/hooks` and trust the Ultragoal bundled hooks, or rerun through `npx ultragoal run --codex --headless "<brief>"`.
    - Do not call `update_goal(status="complete")` until every rubric item, constraints check, and final verifier item is complete.
    - Use `update_goal(status="blocked")` only when the same blocking condition has repeated for the required Codex goal turns and no meaningful progress is possible.
@@ -126,6 +128,7 @@ Work from .ultragoal/codex-goals/<slug>/goal.md. Complete every unchecked rubric
 
 - Codex native Goal mode remains the visible task tracker; the Ultragoal file is the stronger contract, and the Codex Stop hook or runner enforces that contract.
 - Installed plugin hooks require Codex hook trust. Interactive users review them with `/hooks`; headless `npx ultragoal run --codex --headless` passes `--dangerously-bypass-hook-trust` because the command is explicitly launching this vetted plugin.
+- The SessionStart bootstrap links bundled custom agents into `~/.codex/agents/`. If the first session reports that agents were linked, restart Codex before relying on `ultragoal-executor` or `ultragoal-verifier`.
 - Codex Stop hook behavior can vary by CLI version. If a hook does not block the turn, treat the hook as an advisory reminder and rely on the headless runner plus the verifier/panel rubric before completion.
 - Prefer Codex Browser Use for local web UI QA and Computer Use for simulator/desktop GUI flows when command-line proof is not faithful.
 - Keep the goal objective short and put long details in the draft file, because native goal text has a small limit.

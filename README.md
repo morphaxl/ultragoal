@@ -64,9 +64,11 @@ Ultragoal also ships a Codex plugin. It gives Codex the same core contract:
 `$ultragoal-goal` drafts a file-backed rubric, runs the pre-arm rubric audit,
 then attaches Codex's native `/goal` / Goal mode to that contract. As of the
 Codex loop release, the plugin also bundles Codex lifecycle hooks: a
-**Codex Stop hook** gate that checks active Ultragoal files and a SessionStart
-hook that reloads goal context. Interactive Codex may ask you to review and
-trust those hooks with `/hooks`; that trust prompt is expected.
+**Codex Stop hook** gate that checks active Ultragoal files, SessionStart
+context/bootstrap hooks that reload active-goal context and link bundled Codex
+roles, and a SubagentStop evidence gate for `ultragoal-executor`. Interactive
+Codex may ask you to review and trust those hooks with `/hooks`; that trust
+prompt is expected.
 
 ```bash
 npx ultragoal --codex
@@ -113,6 +115,13 @@ missing evidence, or missing verifier/panel verdicts remain, it continues with
 honors Stop-hook blocking, the bundled gate keeps the turn loop moving like the
 Claude gate. If your build treats Stop hooks as advisory, this file-backed
 resume loop is the enforcement fallback.
+
+For larger Codex goals, Ultragoal keeps the root thread as orchestrator and gives
+Codex two custom roles: `ultragoal-executor` for scoped implementation work and
+`ultragoal-verifier` for fresh-context review. Executors must finish with a
+receipt under `.ultragoal/evidence/`; the bundled SubagentStop hook rejects
+missing, empty, symlinked, or out-of-tree receipts before the root session
+accepts the subtask.
 
 ### Autopilot — the recommended way to run goals
 

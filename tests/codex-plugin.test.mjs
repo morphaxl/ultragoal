@@ -17,6 +17,7 @@ test("Codex plugin metadata is installable and version-aligned", () => {
   assert.equal(codexPlugin.version, pkg.version);
   assert.equal(claudePlugin.version, pkg.version);
   assert.equal(codexPlugin.skills, "./skills/");
+  assert.equal(codexPlugin.hooks, "./hooks/hooks.json");
 
   const entry = marketplace.plugins.find((plugin) => plugin.name === "ultragoal-codex");
   assert.ok(entry);
@@ -34,6 +35,7 @@ test("Codex ultragoal skill targets hook-backed native goal mode", () => {
   assert.match(skill, /rubric-audit\.mjs/);
   assert.match(skill, /Codex Stop hook/);
   assert.match(skill, /Codex native Goal mode remains the visible task tracker/);
+  assert.match(skill, /ultragoal-executor/);
 });
 
 test("Codex-bundled rubric audit works independently", () => {

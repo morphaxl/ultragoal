@@ -93,6 +93,82 @@ exit 0
   return binDir;
 }
 
+function makeVerifierFailFakeCodex(root) {
+  const binDir = join(root, "bin");
+  mkdirSync(binDir, { recursive: true });
+  const binPath = join(binDir, "codex");
+  writeFileSync(
+    binPath,
+    `#!/bin/sh
+printf 'codex %s\\n' "$*" >> "$CALL_LOG"
+if [ "$1" = "--version" ]; then
+  printf 'codex 9.9.9\\n'
+  exit 0
+fi
+write_goal() {
+  status="$1"
+  verify="$2"
+  mkdir -p .ultragoal/codex-goals/demo
+  cat > .ultragoal/codex-goals/demo/goal.md <<EOF
+---
+slug: demo
+status: $status
+codex_goal: active
+verify: $verify
+---
+EOF
+  cat >> .ultragoal/codex-goals/demo/goal.md <<'EOF'
+# Rubric
+- [x] item - check: \`true\` exits 0
+  - evidence: \`true\` -> ok
+# Stop conditions
+- done
+
+# Verification log
+EOF
+}
+rubric_hash() {
+  printf '3458076715\\n'
+}
+case " $* " in
+  *" exec resume "*)
+    write_goal done "$FAKE_VERIFY_MODE"
+    H=$(rubric_hash)
+    if [ "$FAKE_VERIFY_MODE" = "panel" ]; then
+      {
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H lens=checks"
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H lens=refute"
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H lens=constraints"
+      } >> .ultragoal/codex-goals/demo/goal.md
+    else
+      echo "ULTRAGOAL-VERIFIED: PASS rubric=$H" >> .ultragoal/codex-goals/demo/goal.md
+    fi
+    ;;
+  *" exec "*)
+    write_goal done "$FAKE_VERIFY_MODE"
+    H=$(rubric_hash)
+    if [ "$FAKE_VERIFY_MODE" = "panel" ]; then
+      {
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H lens=checks"
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H lens=refute"
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H lens=constraints"
+        echo "ULTRAGOAL-VERIFIED: FAIL rubric=$H lens=refute"
+      } >> .ultragoal/codex-goals/demo/goal.md
+    else
+      {
+        echo "ULTRAGOAL-VERIFIED: PASS rubric=$H"
+        echo "ULTRAGOAL-VERIFIED: FAIL rubric=$H"
+      } >> .ultragoal/codex-goals/demo/goal.md
+    fi
+    ;;
+esac
+exit 0
+`
+  );
+  chmodSync(binPath, 0o755);
+  return binDir;
+}
+
 function run(args, extraEnv = {}) {
   const root = mkdtempSync(join(tmpdir(), "ultragoal-codex-run-"));
   const binDir = makeFakeBin(root, "codex");
@@ -219,4 +295,60 @@ test("run --codex --headless does not trust status done until rubric is actually
   assert.match(goal, /^status: done$/m);
   assert.match(goal, /- \[x\] item/);
   assert.match(goal, /evidence:/);
+});
+
+test("run --codex --headless treats latest panel FAIL as repair work even after older PASS", () => {
+  const root = mkdtempSync(join(tmpdir(), "ultragoal-codex-panel-fail-"));
+  const binDir = makeVerifierFailFakeCodex(root);
+  makeFakeBin(root, "claude");
+  const callLog = join(root, "calls.log");
+  const result = spawnSync(process.execPath, [cli, "run", "--codex", "--headless", "finish demo"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PATH: `${binDir}:${process.env.PATH}`,
+      CALL_LOG: callLog,
+      HOME: join(root, "home"),
+      NO_COLOR: "1",
+      ULTRAGOAL_CODEX_RUNNER_MAX_TURNS: "3",
+      FAKE_VERIFY_MODE: "panel",
+    },
+    encoding: "utf8",
+  });
+  const calls = readFileSync(callLog, "utf8").trim().split("\n").filter(Boolean);
+  const goal = readFileSync(join(root, ".ultragoal/codex-goals/demo/goal.md"), "utf8");
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.ok(calls.some((line) => line.includes(" exec resume --last ")));
+  assert.match(calls.find((line) => line.includes(" exec resume --last ")) || "", /repair/i);
+  assert.doesNotMatch(goal, /ULTRAGOAL-VERIFIED: FAIL/);
+});
+
+test("run --codex --headless treats latest verifier FAIL as repair work even after older PASS", () => {
+  const root = mkdtempSync(join(tmpdir(), "ultragoal-codex-verifier-fail-"));
+  const binDir = makeVerifierFailFakeCodex(root);
+  makeFakeBin(root, "claude");
+  const callLog = join(root, "calls.log");
+  const result = spawnSync(process.execPath, [cli, "run", "--codex", "--headless", "finish demo"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PATH: `${binDir}:${process.env.PATH}`,
+      CALL_LOG: callLog,
+      HOME: join(root, "home"),
+      NO_COLOR: "1",
+      ULTRAGOAL_CODEX_RUNNER_MAX_TURNS: "3",
+      FAKE_VERIFY_MODE: "on",
+    },
+    encoding: "utf8",
+  });
+  const calls = readFileSync(callLog, "utf8").trim().split("\n").filter(Boolean);
+  const goal = readFileSync(join(root, ".ultragoal/codex-goals/demo/goal.md"), "utf8");
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.ok(calls.some((line) => line.includes(" exec resume --last ")));
+  assert.match(calls.find((line) => line.includes(" exec resume --last ")) || "", /repair/i);
+  assert.doesNotMatch(goal, /ULTRAGOAL-VERIFIED: FAIL/);
 });

@@ -80,6 +80,70 @@ function codex(cmdArgs, opts) {
   return runBin(resolveCodexBin(), cmdArgs, opts);
 }
 
+function codexHome() {
+  return process.env.CODEX_HOME || join(homedir(), '.codex');
+}
+
+function findCodexAgentSourceDirs() {
+  const roots = unique([
+    join(codexHome(), 'plugins', 'cache'),
+    join(homedir(), '.codex', 'plugins', 'cache'),
+  ]);
+  const found = [];
+  const visit = (dir, depth = 0) => {
+    if (depth > 7 || !existsSync(dir)) return;
+    let entries = [];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    if (existsSync(join(dir, 'ultragoal-executor.toml')) && existsSync(join(dir, 'ultragoal-verifier.toml'))) {
+      found.push(dir);
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      visit(join(dir, entry.name), depth + 1);
+    }
+  };
+  roots.forEach((root) => visit(root));
+  return unique(found);
+}
+
+function linkCodexAgentsFromCache() {
+  const sourceDirs = findCodexAgentSourceDirs();
+  if (sourceDirs.length === 0) return { found: false, linked: 0 };
+
+  const candidates = [];
+  for (const dir of sourceDirs) {
+    for (const name of readdirSync(dir).filter((name) => /^ultragoal-.*\.toml$/.test(name))) {
+      const file = join(dir, name);
+      let mtime = 0;
+      try {
+        mtime = statSync(file).mtimeMs;
+      } catch {
+        continue;
+      }
+      candidates.push({ file, name, mtime });
+    }
+  }
+  candidates.sort((a, b) => a.mtime - b.mtime);
+
+  const dest = join(codexHome(), 'agents');
+  mkdirSync(dest, { recursive: true });
+  let linked = 0;
+  for (const candidate of candidates) {
+    const target = join(dest, candidate.name);
+    const content = readFileSync(candidate.file, 'utf8');
+    if (!existsSync(target) || readFileSync(target, 'utf8') !== content) {
+      writeFileSync(target, content);
+      linked++;
+    }
+  }
+  return { found: true, linked };
+}
+
 function bail(msg) {
   p.cancel(msg);
   process.exit(1);
@@ -165,6 +229,32 @@ function cksum(text) {
   return (res.stdout || '').trim().split(/\s+/)[0] || '';
 }
 
+function isPassVerdict(line, hash) {
+  return line.includes('ULTRAGOAL-VERIFIED: PASS') && (!hash || line.includes(`rubric=${hash}`));
+}
+
+function isFailVerdict(line) {
+  return /ULTRAGOAL-VERIFIED:\s*(FAIL|BLOCKED)/.test(line);
+}
+
+function latestVerdict(verdicts, { lens } = {}) {
+  for (let i = verdicts.length - 1; i >= 0; i--) {
+    const line = verdicts[i];
+    if (!lens || line.includes(`lens=${lens}`)) return line;
+  }
+  return '';
+}
+
+function repairPrompt({ slug, file, hash, lines, scope = 'verifier' }) {
+  const findings = lines.filter(Boolean).map((line) => `- ${line.trim()}`).join('\n');
+  return [
+    `Continue Ultragoal "${slug}" from ${file}. Repair queue: the latest ${scope} verdict did not pass for rubric=${hash}.`,
+    'This is a repair queue, not a report request. Re-open or uncheck the failed claim(s), inspect the verifier finding(s), implement the smallest real fix, rerun the relevant checks, record fresh evidence, and rerun verification.',
+    findings ? `Latest failing verdicts:\n${findings}` : '',
+    'Do not summarize and stop while a verifier FAIL/BLOCKED verdict is the latest result.',
+  ].filter(Boolean).join('\n');
+}
+
 function listGoalFiles(base) {
   if (!existsSync(base)) return [];
   const files = [];
@@ -229,8 +319,8 @@ function evaluateGoalFile(goal) {
   const verify = readFrontmatterField(text, 'verify') || 'on';
   const hash = cksum(normalizeRubricForHash(rubric));
   const verdicts = text.split(/\r?\n/).filter((line) => line.includes('ULTRAGOAL-VERIFIED:'));
-  const hasPanel = (lens) => verdicts.some((line) => line.includes('ULTRAGOAL-VERIFIED: PASS') && line.includes(`rubric=${hash}`) && line.includes(`lens=${lens}`));
-  const hasPass = verdicts.some((line) => line.includes('ULTRAGOAL-VERIFIED: PASS') && (!hash || line.includes(`rubric=${hash}`)));
+  const latestForLens = (lens) => latestVerdict(verdicts, { lens });
+  const latestFullVerdict = latestVerdict(verdicts);
 
   if (unchecked.length > 0) {
     return {
@@ -246,14 +336,37 @@ function evaluateGoalFile(goal) {
       prompt: `Continue Ultragoal "${slug}" from ${file}. ${checkedWithoutEvidence} checked rubric item(s) have no evidence line. Add command evidence, then verify.`,
     };
   }
-  if (verify === 'panel' && !(hasPanel('checks') && hasPanel('refute') && hasPanel('constraints'))) {
+  const hasCurrentPanelPass = (lens) => isPassVerdict(latestForLens(lens), hash);
+  if (verify === 'panel' && !(hasCurrentPanelPass('checks') && hasCurrentPanelPass('refute') && hasCurrentPanelPass('constraints'))) {
+    const failing = ['checks', 'refute', 'constraints']
+      .map((lens) => latestForLens(lens))
+      .filter((line) => line && isFailVerdict(line));
+    if (failing.length > 0) {
+      return {
+        done: false,
+        file,
+        prompt: repairPrompt({ slug, file, hash, lines: failing, scope: 'panel' }),
+      };
+    }
+    const panelMissing = ['checks', 'refute', 'constraints'].filter((lens) => !hasCurrentPanelPass(lens));
     return {
       done: false,
       file,
-      prompt: `Continue Ultragoal "${slug}" from ${file}. All boxes are checked, but max-rigor panel verification is incomplete. Run independent checks/refute/constraints verifier passes and append PASS verdicts bound to rubric=${hash}.`,
+      prompt: [
+        `Continue Ultragoal "${slug}" from ${file}. All boxes are checked, but max-rigor panel verification is incomplete or stale (missing/stale lenses: ${panelMissing.join(', ')}).`,
+        `Spawn or run independent checks/refute/constraints verifier passes and append PASS verdicts bound to rubric=${hash}.`,
+        'If any verifier returns FAIL or BLOCKED, treat that finding as a repair queue: fix the failed claim first, then rerun the affected checks and the panel.',
+      ].join('\n'),
     };
   }
-  if (verify !== 'off' && verify !== 'panel' && !hasPass) {
+  if (verify !== 'off' && verify !== 'panel' && !isPassVerdict(latestFullVerdict, hash)) {
+    if (latestFullVerdict && isFailVerdict(latestFullVerdict)) {
+      return {
+        done: false,
+        file,
+        prompt: repairPrompt({ slug, file, hash, lines: [latestFullVerdict] }),
+      };
+    }
     return {
       done: false,
       file,
@@ -402,7 +515,9 @@ function installCodexPlugin(spinner) {
     spinner.stop(pc.red('Codex install failed'));
     bail(`Try the manual route:\n  codex plugin marketplace add ${CODEX_MARKETPLACE}\n  codex plugin add ${CODEX_PLUGIN}`);
   }
-  spinner.stop('Codex plugin installed');
+  const agents = linkCodexAgentsFromCache();
+  const agentNote = agents.found ? `; Codex agents ${agents.linked > 0 ? 'linked' : 'already linked'}` : '';
+  spinner.stop(`Codex plugin installed${agentNote}`);
 }
 
 // ------------------------------------------------------------------ help ---
@@ -580,7 +695,9 @@ if (args[0] === 'update') {
       us.start('Installing latest Codex plugin');
       const add = codex(['plugin', 'add', CODEX_PLUGIN]);
       if ((add.status ?? 1) === 0) {
-        us.stop('Codex plugin updated');
+        const agents = linkCodexAgentsFromCache();
+        const agentNote = agents.found ? `; Codex agents ${agents.linked > 0 ? 'linked' : 'already linked'}` : '';
+        us.stop(`Codex plugin updated${agentNote}`);
         ok++;
       } else {
         us.stop(pc.red('Codex plugin update failed'));

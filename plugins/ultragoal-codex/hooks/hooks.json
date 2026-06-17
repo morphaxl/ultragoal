@@ -17,9 +17,32 @@
         "hooks": [
           {
             "type": "command",
+            "command": "sh -c 'for f in \"${PLUGIN_ROOT:-}\"/scripts/codex-agent-bootstrap.sh \"${CODEX_HOME:-$HOME/.codex}\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-agent-bootstrap.sh \"$HOME/.codex\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-agent-bootstrap.sh \"${CODEX_HOME:-$HOME/.codex}\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-agent-bootstrap.sh \"$HOME/.codex\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-agent-bootstrap.sh plugins/ultragoal-codex/scripts/codex-agent-bootstrap.sh; do [ -f \"$f\" ] && exec sh \"$f\"; done; exit 0'",
+            "timeout": 10,
+            "statusMessage": "Linking Ultragoal Codex agents"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "sh -c 'for d in \"${CODEX_HOME:-$HOME/.codex}\" \"$HOME/.codex\"; do for f in \"$d\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-session-context.sh \"$d\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-session-context.sh; do [ -f \"$f\" ] && exec sh \"$f\"; done; done; if [ -f plugins/ultragoal-codex/scripts/codex-session-context.sh ]; then exec sh plugins/ultragoal-codex/scripts/codex-session-context.sh; fi; exit 0'",
             "timeout": 10,
             "statusMessage": "Loading Ultragoal context"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "^ultragoal-executor$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'for f in \"${PLUGIN_ROOT:-}\"/scripts/codex-executor-evidence-gate.sh \"${CODEX_HOME:-$HOME/.codex}\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-executor-evidence-gate.sh \"$HOME/.codex\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-executor-evidence-gate.sh \"${CODEX_HOME:-$HOME/.codex}\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-executor-evidence-gate.sh \"$HOME/.codex\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-executor-evidence-gate.sh plugins/ultragoal-codex/scripts/codex-executor-evidence-gate.sh; do [ -f \"$f\" ] && exec sh \"$f\"; done; exit 0'",
+            "timeout": 10,
+            "statusMessage": "Verifying Ultragoal executor evidence"
           }
         ]
       }

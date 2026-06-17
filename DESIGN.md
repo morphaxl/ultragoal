@@ -150,14 +150,16 @@ The goal survives `/clear`, laptop sleep, days. On every session start, a `Sessi
 
 Codex now gets the same file-backed loop contract through a separate
 `ultragoal-codex` plugin. It packages `$ultragoal-goal`, a Codex Stop hook gate,
-and a SessionStart context hook. Interactive Codex users may need to review hook
-trust with `/hooks`; `npx ultragoal run --codex --headless "<brief>"` launches a
-vetted `codex exec` run with hook trust bypassed for automation. After each turn,
-the runner reads the active goal file and resumes with `codex exec resume --last`
-when unchecked items, missing evidence, or missing verifier/panel verdicts
-remain. If a Codex build honors Stop-hook blocking, the gate blocks early exits
-like the Claude gate. If a build treats hooks as advisory, this durable goal-file
-inspection is the enforcement fallback.
+SessionStart context/bootstrap hooks, custom `ultragoal-executor` and
+`ultragoal-verifier` roles, and a SubagentStop evidence gate requiring executor
+receipts under `.ultragoal/evidence/`. Interactive Codex users may need to
+review hook trust with `/hooks`; `npx ultragoal run --codex --headless "<brief>"`
+launches a vetted `codex exec` run with hook trust bypassed for automation.
+After each turn, the runner reads the active goal file and resumes with
+`codex exec resume --last` when unchecked items, missing evidence, or missing
+verifier/panel verdicts remain. If a Codex build honors Stop-hook blocking, the
+gate blocks early exits like the Claude gate. If a build treats hooks as
+advisory, this durable goal-file inspection is the enforcement fallback.
 
 ### Every session benefits, even without a goal
 
