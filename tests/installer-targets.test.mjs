@@ -51,7 +51,7 @@ function runInstaller(args) {
   return { result, calls };
 }
 
-test("installer --codex installs only the Codex bridge", () => {
+test("installer --codex installs only the Codex plugin", () => {
   const { result, calls } = runInstaller(["--yes", "--codex"]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);

@@ -1,17 +1,18 @@
 ---
 name: ultragoal-goal
-description: "Codex-native Ultragoal bridge. Use when the user asks for ultragoal in Codex, a rubric-backed Codex /goal, durable goal execution, evidence-led completion, or to turn a brain dump into Codex native Goal mode. Do not use for trivial one-turn tasks unless explicitly invoked."
+description: "Ultragoal for Codex. Use when the user asks for ultragoal in Codex, a hook-backed or runner-backed Codex goal loop, a rubric-backed Codex /goal, durable goal execution, evidence-led completion, panel verification, or to turn a brain dump into a Codex-native goal. Do not use for trivial one-turn tasks unless explicitly invoked."
 ---
 
 # Ultragoal Goal for Codex
 
-Use this skill to convert an open-ended request into a file-backed Ultragoal spec, audit the rubric, then attach Codex native Goal mode to that spec. This is a Codex bridge, not the Claude hook-gated loop: Codex Goal mode owns persistence, while the spec owns the definition of done.
+Use this skill to convert an open-ended request into a file-backed Ultragoal spec, audit the rubric, then attach Codex native Goal mode to that spec. The Codex plugin bundles a Codex Stop hook gate plus a SessionStart context hook. When the installed Codex build honors Stop-hook blocking, the gate keeps Codex working until the rubric and verifier/panel verdict hold. When a Codex build treats hooks as advisory or hooks are not yet trusted, `npx ultragoal run --codex --headless "<brief>"` is the supported runner fallback: it starts Codex with the same file-backed contract, bypasses hook trust for that vetted automation run, inspects the active goal after each turn, and resumes with the remaining rubric/verifier work until the file is marked done or the runner cap is reached.
 
 ## Inputs
 
 - User brief or brain dump.
 - Repository guidance (`AGENTS.md`) and any existing `.ultragoal/memory/` files.
 - Current Codex goal state, if `get_goal` is available.
+- Codex hook state if the user reports hook warnings; ask them to open `/hooks` only when trust is blocking the bundled gate.
 
 ## First Reads
 
@@ -33,7 +34,8 @@ If present in the repo, also read `.ultragoal/memory/MEMORY.md` and any active `
    - Ask at most 1-3 narrow questions only when the answer changes the rubric or safety boundary. Use a recommended default when the repo and brief support one.
 
 3. **Write the draft**
-   - Create `.ultragoal/codex-goals/<slug>/goal.md`.
+   - Prefer `.ultragoal/goals/active/<slug>/goal.md` for new hook-backed goals so Claude and Codex use the same canonical active-goal shape.
+   - If the repo already uses `.ultragoal/codex-goals/<slug>/goal.md`, continuing that legacy path is acceptable; the Codex gate enforces both locations.
    - Use `status: draft` until the user explicitly asks to start/arm/run it.
    - Keep the draft readable by other harnesses.
 
@@ -46,7 +48,8 @@ type: codex-goal
 status: draft
 created: <YYYY-MM-DD>
 codex_goal: pending
-verify: on
+verify: on|panel
+budget: <turn budget>
 ---
 
 # Objective
@@ -86,6 +89,7 @@ Resolve `<skill-dir>` to this skill directory. A `BLOCKER` is a draft defect; re
 6. **Arm Codex native Goal mode**
    - If `create_goal` is available, call it with a compact objective under 4,000 characters. Do not set a token budget unless the user explicitly requested one.
    - After arming, update the draft frontmatter to `status: active` and `codex_goal: active`.
+   - If the user requested "max rigor" or "panel verification", set `verify: panel`; completion then requires all three fresh-context lenses: `checks`, `refute`, and `constraints`.
    - Objective template:
 
 ```text
@@ -102,6 +106,8 @@ Work from .ultragoal/codex-goals/<slug>/goal.md. Complete every unchecked rubric
    - Keep `update_plan` synchronized with the next few rubric items.
    - Use browser, simulator, Computer Use, curl, tmux, or CLI evidence according to the QA map. Tests are supporting evidence, not proof of a UI or external-service claim.
    - After each passed item, update the checkbox and add one evidence line under it or in `# Verification log`.
+   - If `verify: panel`, dispatch or run three independent verifier passes at the end. Each must append exactly `ULTRAGOAL-VERIFIED: PASS rubric=<hash> lens=<checks|refute|constraints>` to the goal file, bound to the current rubric hash.
+   - If Codex prints a hook-trust warning, tell the user to run `/hooks` and trust the Ultragoal bundled hooks, or rerun through `npx ultragoal run --codex --headless "<brief>"`.
    - Do not call `update_goal(status="complete")` until every rubric item, constraints check, and final verifier item is complete.
    - Use `update_goal(status="blocked")` only when the same blocking condition has repeated for the required Codex goal turns and no meaningful progress is possible.
 
@@ -111,7 +117,8 @@ Work from .ultragoal/codex-goals/<slug>/goal.md. Complete every unchecked rubric
 
 ## Codex-Specific Notes
 
-- Codex native Goal mode is the persistence layer; this skill supplies a stronger goal contract.
-- Do not install or require Claude-only hooks for this bridge.
+- Codex native Goal mode remains the visible task tracker; the Ultragoal file is the stronger contract, and the Codex Stop hook or runner enforces that contract.
+- Installed plugin hooks require Codex hook trust. Interactive users review them with `/hooks`; headless `npx ultragoal run --codex --headless` passes `--dangerously-bypass-hook-trust` because the command is explicitly launching this vetted plugin.
+- Codex Stop hook behavior can vary by CLI version. If a hook does not block the turn, treat the hook as an advisory reminder and rely on the headless runner plus the verifier/panel rubric before completion.
 - Prefer Codex Browser Use for local web UI QA and Computer Use for simulator/desktop GUI flows when command-line proof is not faithful.
 - Keep the goal objective short and put long details in the draft file, because native goal text has a small limit.

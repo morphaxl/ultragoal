@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'for d in \"${CODEX_HOME:-$HOME/.codex}\" \"$HOME/.codex\"; do for f in \"$d\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-goal-gate.sh \"$d\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-goal-gate.sh; do [ -f \"$f\" ] && exec sh \"$f\"; done; done; if [ -f plugins/ultragoal-codex/scripts/codex-goal-gate.sh ]; then exec sh plugins/ultragoal-codex/scripts/codex-goal-gate.sh; fi; exit 0'",
+            "timeout": 20,
+            "statusMessage": "Checking active Ultragoal"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'for d in \"${CODEX_HOME:-$HOME/.codex}\" \"$HOME/.codex\"; do for f in \"$d\"/plugins/cache/*/ultragoal-codex/*/scripts/codex-session-context.sh \"$d\"/plugins/cache/*/*/ultragoal-codex/*/scripts/codex-session-context.sh; do [ -f \"$f\" ] && exec sh \"$f\"; done; done; if [ -f plugins/ultragoal-codex/scripts/codex-session-context.sh ]; then exec sh plugins/ultragoal-codex/scripts/codex-session-context.sh; fi; exit 0'",
+            "timeout": 10,
+            "statusMessage": "Loading Ultragoal context"
+          }
+        ]
+      }
+    ]
+  }
+}

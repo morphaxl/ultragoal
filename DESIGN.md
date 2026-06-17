@@ -146,6 +146,19 @@ The repo doubles as its own marketplace (`.claude-plugin/marketplace.json`). Day
 
 The goal survives `/clear`, laptop sleep, days. On every session start, a `SessionStart` hook injects a tiny banner: active goal, turn N of budget, memory index head. Resume = just keep talking, or `claude -p ""` in CI. `/ultragoal:status` shows the full picture; `/ultragoal:stop` bails out gracefully (and still offers to distill what was learned — failures are memory too, per `failures.md`).
 
+### Codex loop path
+
+Codex now gets the same file-backed loop contract through a separate
+`ultragoal-codex` plugin. It packages `$ultragoal-goal`, a Codex Stop hook gate,
+and a SessionStart context hook. Interactive Codex users may need to review hook
+trust with `/hooks`; `npx ultragoal run --codex --headless "<brief>"` launches a
+vetted `codex exec` run with hook trust bypassed for automation. After each turn,
+the runner reads the active goal file and resumes with `codex exec resume --last`
+when unchecked items, missing evidence, or missing verifier/panel verdicts
+remain. If a Codex build honors Stop-hook blocking, the gate blocks early exits
+like the Claude gate. If a build treats hooks as advisory, this durable goal-file
+inspection is the enforcement fallback.
+
 ### Every session benefits, even without a goal
 
 The memory consult/distill protocol and the style config apply to normal sessions via the CLAUDE.md block — the goal loop is the flagship, not a prerequisite.
@@ -172,6 +185,7 @@ ultragoal/                          # GitHub repo = plugin = marketplace
 ├── scripts/
 │   ├── goal-gate.sh                # the loop engine (§2) — deterministic, fail-open
 │   └── session-context.sh          # injects memory index head + active-goal banner (capped ~25KB/200 lines)
+├── plugins/ultragoal-codex/        # Codex plugin: skill + bundled hooks + Codex gate scripts
 └── README.md · DESIGN.md · LICENSE
     (templates ship as skill supporting files; source guides are linked, not redistributed)
 ```

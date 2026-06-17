@@ -25,14 +25,15 @@ test("Codex plugin metadata is installable and version-aligned", () => {
   assert.equal(entry.policy.authentication, "ON_INSTALL");
 });
 
-test("Codex ultragoal skill targets native goal mode", () => {
+test("Codex ultragoal skill targets hook-backed native goal mode", () => {
   const skill = text("../plugins/ultragoal-codex/skills/ultragoal-goal/SKILL.md");
 
   assert.match(skill, /^name: ultragoal-goal$/m);
   assert.match(skill, /create_goal/);
   assert.match(skill, /\/goal Work from/);
   assert.match(skill, /rubric-audit\.mjs/);
-  assert.match(skill, /Codex native Goal mode is the persistence layer/);
+  assert.match(skill, /Codex Stop hook/);
+  assert.match(skill, /Codex native Goal mode remains the visible task tracker/);
 });
 
 test("Codex-bundled rubric audit works independently", () => {

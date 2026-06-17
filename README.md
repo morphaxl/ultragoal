@@ -45,7 +45,7 @@ And the pitch in one line: **you never have to learn prompt engineering — or l
 npx ultragoal
 ```
 
-An interactive installer walks you through it: choose **Claude Code**, **Codex**, or **both**. Claude Code remains the default for non-interactive installs (`--yes`) and can install to this project by default (it lands in `.claude/settings.json`, so teammates get it through git) or machine-wide with `--global`. If you pick Claude Code, the installer can also pre-configure the repo: five working-style questions, `.ultragoal/`, and the managed `CLAUDE.md` block. `--codex` installs only the Codex native Goal-mode bridge; `--all` installs both; `uninstall` removes the selected plugins and marketplace entries. Prefer the Claude route directly? Inside Claude Code:
+An interactive installer walks you through it: choose **Claude Code**, **Codex**, or **both**. Claude Code remains the default for non-interactive installs (`--yes`) and can install to this project by default (it lands in `.claude/settings.json`, so teammates get it through git) or machine-wide with `--global`. If you pick Claude Code, the installer can also pre-configure the repo: five working-style questions, `.ultragoal/`, and the managed `CLAUDE.md` block. `--codex` installs the Codex hook-backed goal loop plugin; `--all` installs both; `uninstall` removes the selected plugins and marketplace entries. Prefer the Claude route directly? Inside Claude Code:
 
 ```text
 /plugin marketplace add morphaxl/ultragoal
@@ -58,13 +58,15 @@ Want it available in every project on your machine instead of just this one?
 npx ultragoal --global
 ```
 
-### Codex native Goal mode
+### Codex loop
 
-Ultragoal also ships a Codex-native bridge as a separate plugin. It does **not**
-install the Claude Stop-hook loop. Instead, it gives Codex one skill,
-`$ultragoal-goal`, that drafts a file-backed rubric under
-`.ultragoal/codex-goals/`, runs the same pre-arm rubric audit, then attaches
-Codex's native `/goal` / Goal mode to that contract.
+Ultragoal also ships a Codex plugin. It gives Codex the same core contract:
+`$ultragoal-goal` drafts a file-backed rubric, runs the pre-arm rubric audit,
+then attaches Codex's native `/goal` / Goal mode to that contract. As of the
+Codex loop release, the plugin also bundles Codex lifecycle hooks: a
+**Codex Stop hook** gate that checks active Ultragoal files and a SessionStart
+hook that reloads goal context. Interactive Codex may ask you to review and
+trust those hooks with `/hooks`; that trust prompt is expected.
 
 ```bash
 npx ultragoal --codex
@@ -89,9 +91,20 @@ Then start a new Codex session and invoke:
 $ultragoal-goal turn this brain dump into a rubric-backed Codex goal: ...
 ```
 
-Use this when you want ultragoal's spec/rubric discipline in Codex without
-replacing Codex's own goal lifecycle, browser use, computer use, or subagent
-tools.
+For an unattended Codex run, use the runner:
+
+```bash
+npx ultragoal run --codex --headless "make chat load faster without breaking tests"
+```
+
+Headless Codex runs use `codex exec` with a workspace-write sandbox, approval
+policy `never`, and `--dangerously-bypass-hook-trust` for this vetted plugin
+run. After each Codex turn, the runner inspects the active Ultragoal file; if
+unchecked rubric items, missing evidence, or missing verifier/panel verdicts
+remain, it continues with `codex exec resume --last` and the exact remaining
+work. If your Codex build honors Stop-hook blocking, the bundled gate keeps the
+turn loop moving like the Claude gate. If your build treats Stop hooks as
+advisory, this file-backed resume loop is the enforcement fallback.
 
 ### Autopilot — the recommended way to run goals
 
@@ -99,9 +112,21 @@ tools.
 npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contract tests"
 ```
 
-This is how ultragoal is meant to be used: one command from terminal to running goal loop, at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
+This is how ultragoal is meant to be used: one command from terminal to running goal loop. The default launches Claude Code at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
 
-Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual Claude sweep — every install, user scope plus all per-project pins, in one go; use `npx ultragoal update --codex` or `--all` for the Codex bridge. Uninstall with `npx ultragoal uninstall` (tries both installed surfaces; add `--codex` or `--claude` to target one, and `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
+For Codex, add `--codex`:
+
+```bash
+npx ultragoal run --codex "checkout is slow, get p95 under 200ms without breaking contract tests"
+npx ultragoal run --codex --headless "checkout is slow, get p95 under 200ms without breaking contract tests"
+```
+
+Interactive Codex launches with approval guardrails on so you can review `/hooks`.
+Headless Codex launches through `codex exec`; `--safe` switches approvals from
+`never` to `on-request`. Codex `--worktree` is intentionally not implemented
+yet — create a git worktree yourself, `cd` into it, and run the command there.
+
+Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual Claude sweep — every install, user scope plus all per-project pins, in one go; use `npx ultragoal update --codex` or `--all` for the Codex loop. Uninstall with `npx ultragoal uninstall` (tries both installed surfaces; add `--codex` or `--claude` to target one, and `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
 ## Sixty seconds to your first goal
 

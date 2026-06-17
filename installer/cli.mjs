@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, rmSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, rmSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
@@ -85,6 +85,182 @@ function commandFailure(res) {
   return oneLineOutput(res) || `exit ${res?.status ?? 1}`;
 }
 
+function findUltragoalRoot(start = process.cwd()) {
+  let d = start;
+  while (d && d !== '/' && d !== homedir()) {
+    if (existsSync(join(d, '.ultragoal'))) return d;
+    const next = resolve(d, '..');
+    if (next === d) break;
+    d = next;
+  }
+  return start;
+}
+
+function readFrontmatterField(text, field) {
+  const match = text.match(new RegExp(`^${field}:\\s*(.+?)\\s*$`, 'm'));
+  return match ? match[1].trim() : '';
+}
+
+function section(text, heading) {
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => new RegExp(`^#+\\s+${heading}\\s*$`, 'i').test(line));
+  if (start === -1) return '';
+  const out = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^#+\s+/.test(lines[i])) break;
+    out.push(lines[i]);
+  }
+  return out.join('\n');
+}
+
+function normalizeRubricForHash(rubric) {
+  const out = [];
+  let inEvidence = false;
+  for (const raw of rubric.split(/\r?\n/)) {
+    const line = raw.replace(/^(\s*-\s*)\[[xX ]\]/, '$1[ ]');
+    if (/^\s*-\s*evidence:/.test(line)) {
+      inEvidence = true;
+      continue;
+    }
+    if (inEvidence && (/^\s*-\s*\[/.test(line) || /^\s*-\s*check:/.test(line) || /^\S/.test(line))) {
+      inEvidence = false;
+    }
+    if (inEvidence) continue;
+    out.push(line);
+  }
+  return out.join('\n');
+}
+
+function cksum(text) {
+  const res = spawnSync('cksum', { input: text, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  if ((res.status ?? 1) !== 0) return '';
+  return (res.stdout || '').trim().split(/\s+/)[0] || '';
+}
+
+function listGoalFiles(base) {
+  if (!existsSync(base)) return [];
+  const files = [];
+  for (const name of readdirSync(base)) {
+    const goal = join(base, name, 'goal.md');
+    if (existsSync(goal)) files.push(goal);
+  }
+  return files;
+}
+
+function findActiveGoalFile(root) {
+  const ug = join(root, '.ultragoal');
+  const candidates = [
+    ...listGoalFiles(join(ug, 'goals', 'active')),
+    ...listGoalFiles(join(ug, 'codex-goals')),
+  ];
+  const active = candidates
+    .map((file) => {
+      try {
+        const text = readFileSync(file, 'utf8');
+        return { file, text, mtime: statSync(file).mtimeMs };
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean)
+    .filter(({ text }) => readFrontmatterField(text, 'status') === 'active')
+    .filter(({ text, file }) => !file.includes(`${join('.ultragoal', 'codex-goals')}`) || ['', 'active'].includes(readFrontmatterField(text, 'codex_goal')));
+  active.sort((a, b) => b.mtime - a.mtime);
+  return active[0] || null;
+}
+
+function evaluateGoalFile(goal) {
+  if (!goal) return { done: true, reason: 'no-active-goal' };
+  const { file, text } = goal;
+  const slug = readFrontmatterField(text, 'slug') || file;
+  const rubric = section(text, 'Rubric');
+  const unchecked = rubric.split(/\r?\n/).filter((line) => /^\s*-\s*\[\s\]/.test(line));
+  const checkedWithoutEvidence = (() => {
+    let missing = 0;
+    let checked = false;
+    let found = false;
+    for (const line of rubric.split(/\r?\n/)) {
+      if (/^\s*-\s*\[[xX ]\]/.test(line)) {
+        if (checked && !found) missing += 1;
+        checked = /\[[xX]\]/.test(line);
+        found = false;
+      } else if (checked && /evidence:/.test(line)) {
+        found = true;
+      }
+    }
+    if (checked && !found) missing += 1;
+    return missing;
+  })();
+  const verify = readFrontmatterField(text, 'verify') || 'on';
+  const hash = cksum(normalizeRubricForHash(rubric));
+  const verdicts = text.split(/\r?\n/).filter((line) => line.includes('ULTRAGOAL-VERIFIED:'));
+  const hasPanel = (lens) => verdicts.some((line) => line.includes('ULTRAGOAL-VERIFIED: PASS') && line.includes(`rubric=${hash}`) && line.includes(`lens=${lens}`));
+  const hasPass = verdicts.some((line) => line.includes('ULTRAGOAL-VERIFIED: PASS') && (!hash || line.includes(`rubric=${hash}`)));
+
+  if (unchecked.length > 0) {
+    return {
+      done: false,
+      file,
+      prompt: `Continue Ultragoal "${slug}" from ${file}. Remaining unchecked rubric items:\n${unchecked.join('\n')}\nRun the checks, record evidence under each item, and do not finish until verifier requirements pass.`,
+    };
+  }
+  if (checkedWithoutEvidence > 0) {
+    return {
+      done: false,
+      file,
+      prompt: `Continue Ultragoal "${slug}" from ${file}. ${checkedWithoutEvidence} checked rubric item(s) have no evidence line. Add command evidence, then verify.`,
+    };
+  }
+  if (verify === 'panel' && !(hasPanel('checks') && hasPanel('refute') && hasPanel('constraints'))) {
+    return {
+      done: false,
+      file,
+      prompt: `Continue Ultragoal "${slug}" from ${file}. All boxes are checked, but max-rigor panel verification is incomplete. Run independent checks/refute/constraints verifier passes and append PASS verdicts bound to rubric=${hash}.`,
+    };
+  }
+  if (verify !== 'off' && verify !== 'panel' && !hasPass) {
+    return {
+      done: false,
+      file,
+      prompt: `Continue Ultragoal "${slug}" from ${file}. All boxes are checked, but there is no verifier PASS bound to rubric=${hash}. Run the verifier and append its verdict.`,
+    };
+  }
+  return {
+    done: false,
+    file,
+    prompt: `Ultragoal "${slug}" is verified in ${file}. Distill durable lessons if any, set status: done, archive or record completion, then report the outcome.`,
+  };
+}
+
+function runCodexHeadlessLoop({ prompt, safe }) {
+  const approval = safe ? 'on-request' : 'never';
+  const maxTurns = Number.parseInt(process.env.ULTRAGOAL_CODEX_RUNNER_MAX_TURNS || '25', 10);
+  const baseArgs = ['--sandbox', 'workspace-write', '--ask-for-approval', approval, '--dangerously-bypass-hook-trust'];
+  let res = spawnSync('codex', [...baseArgs, 'exec', prompt], { stdio: 'inherit' });
+  if ((res.status ?? 1) !== 0) return res.status ?? 1;
+
+  for (let i = 1; i <= maxTurns; i++) {
+    const root = findUltragoalRoot(process.cwd());
+    const active = findActiveGoalFile(root);
+    const state = evaluateGoalFile(active);
+    if (state.done) return 0;
+    p.log.info(`Codex runner continuing Ultragoal (${i}/${maxTurns}): ${state.file || state.reason}`);
+    res = spawnSync('codex', [...baseArgs, 'exec', 'resume', '--last', state.prompt], { stdio: 'inherit' });
+    if ((res.status ?? 1) !== 0) return res.status ?? 1;
+    const after = findActiveGoalFile(findUltragoalRoot(process.cwd()));
+    if (!after) return 0;
+    try {
+      const text = readFileSync(after.file, 'utf8');
+      if (readFrontmatterField(text, 'status') === 'done') return 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  p.log.warn(`Codex runner reached ULTRAGOAL_CODEX_RUNNER_MAX_TURNS=${maxTurns}. Leaving the active goal for resume.`);
+  return 1;
+}
+
 async function chooseInstallTargets() {
   const explicit = targetFlags();
   if (explicit) return explicit;
@@ -94,8 +270,8 @@ async function chooseInstallTargets() {
     message: 'Where should ultragoal be installed?',
     options: [
       { value: 'claude', label: 'Claude Code', hint: 'full hook-gated loop; current default' },
-      { value: 'codex', label: 'Codex', hint: 'native Goal-mode bridge skill' },
-      { value: 'both', label: 'Both', hint: 'Claude loop + Codex goal bridge' },
+      { value: 'codex', label: 'Codex', hint: 'hook-backed Codex goal loop + native Goal-mode skill' },
+      { value: 'both', label: 'Both', hint: 'Claude loop + Codex loop' },
     ],
     initialValue: 'claude',
   });
@@ -196,7 +372,7 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal              interactive install (choose Claude, Codex, or both)
     npx ultragoal --yes        non-interactive: Claude project-scope install, no prompts
     npx ultragoal --claude     install only the Claude Code loop
-    npx ultragoal --codex      install the Codex native Goal-mode bridge
+    npx ultragoal --codex      install the Codex hook-backed goal loop plugin
     npx ultragoal --all        install both Claude Code and Codex surfaces
     npx ultragoal --project    install at project scope (the default; team-shared via git)
     npx ultragoal --global     install machine-wide (user scope) instead
@@ -206,6 +382,10 @@ if (flag('--help') || flag('-h')) {
     npx ultragoal run "<brief>"
                                full-autonomy goal run: launches Claude Code with the goal
                                armed and --dangerously-skip-permissions (no prompts at all)
+    npx ultragoal run --codex "<brief>"
+                               Codex goal run: installs the Codex plugin, then launches Codex
+                               with the ultragoal skill; add --headless for codex exec
+                               (workspace-write, approvals never, hook-trust bypass)
         --safe                 auto mode instead: tools auto-approved, guardrails stay on
         --worktree             run in a fresh git worktree — isolated checkout, so
                                parallel goals on one repo can't collide
@@ -237,6 +417,7 @@ if (flag('--help') || flag('-h')) {
 // ------------------------------------------------------------------- run ---
 if (args[0] === 'run') {
   const rest = args.slice(1);
+  const codexRun = rest.includes('--codex');
   const safe = rest.includes('--safe');
   const headless = rest.includes('--headless');
   const worktree = rest.includes('--worktree');
@@ -245,6 +426,23 @@ if (args[0] === 'run') {
   p.intro(pc.bgGreen(pc.black(' ultragoal autopilot ')));
   if (!brief) {
     bail('Give it a brief: npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contract tests"');
+  }
+  if (codexRun) {
+    if (worktree) bail('Codex run does not support --worktree yet. Use git worktree manually, cd into it, then run npx ultragoal run --codex.');
+    const s0 = p.spinner();
+    installCodexPlugin(s0);
+    const prompt = `$ultragoal-goal ${brief}`;
+    if (headless) {
+      p.log.info('Codex headless mode: workspace-write sandbox, plugin hook trust bypassed for this vetted run, with file-backed resume checks between turns.');
+      p.outro('Running the Codex goal loop headless — output follows.');
+      process.exit(runCodexHeadlessLoop({ prompt, safe }));
+    } else {
+      p.log.info('Codex interactive mode: review/trust bundled hooks with /hooks if Codex asks.');
+      const codexArgs = ['--sandbox', 'workspace-write', '--ask-for-approval', 'on-request', prompt];
+      p.outro('Handing you over to Codex with the Ultragoal skill prompt.');
+      const launch = spawnSync('codex', codexArgs, { stdio: 'inherit' });
+      process.exit(launch.status ?? 0);
+    }
   }
   const cv = claude(['--version']);
   if (cv.missing) bail('Install Claude Code first: https://claude.com/claude-code');
