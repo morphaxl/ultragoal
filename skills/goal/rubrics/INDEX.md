@@ -18,6 +18,7 @@ Research-backed starting points — every threshold cited, every item carrying i
 | [cli-tool.md](cli-tool.md) | Building a command-line tool (clig.dev bar) | task |
 | [documentation.md](documentation.md) | Writing/overhauling docs (Diátaxis + Standard Readme) | task |
 | [rn-feature.md](rn-feature.md) | React Native/Expo feature, device-check discipline | task |
+| [research-audit.md](research-audit.md) | Research memos, audits, investigations — claims must be source-grounded, verifier re-fetches sources | task |
 | [app-store-readiness.md](app-store-readiness.md) | iOS/Android store submission prep | task |
 | [realtime-stability.md](realtime-stability.md) | Websockets/live updates surviving real network life | task |
 

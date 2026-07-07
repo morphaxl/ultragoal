@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Independent fresh-context verifier for ultragoal rubric claims. Dispatch for the final goal sign-off, and earlier for items that failed before or look shaky.
+description: Independent fresh-context verifier for ultragoal rubric claims. Dispatch ONLY while an ultragoal goal is armed — for the final sign-off, and earlier for items that failed before or look shaky. Never dispatch for ordinary (non-goal) tasks.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---

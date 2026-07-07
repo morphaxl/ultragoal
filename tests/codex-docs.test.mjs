@@ -15,18 +15,19 @@ test("Codex skill no longer claims to be only a native-goal bridge", () => {
   assert.doesNotMatch(skill, /This is a Codex bridge, not the Claude hook-gated loop/);
 });
 
-test("README and DESIGN document Codex hooks, runner, panel mode, and fallback", () => {
-  const docs = `${text("../README.md")}\n${text("../DESIGN.md")}`;
-  assert.match(docs, /npx ultragoal run --codex/);
-  assert.match(docs, /Codex Stop hook/i);
+test("Codex docs cover hooks, runner, panel mode, and fallback (README points at docs/codex.md)", () => {
+  const readme = text("../README.md");
+  assert.match(readme, /npx ultragoal run --codex/);
+  assert.match(readme, /docs\/codex\.md/);
+  const docs = `${text("../docs/codex.md")}\n${text("../DESIGN.md")}`;
+  assert.match(docs, /Codex Stop hook|Stop-hook gate/i);
   assert.match(docs, /hook trust/i);
   assert.match(docs, /panel/i);
   assert.match(docs, /fallback/i);
 });
 
-test("README documents Codex interview mode and headless defaulting", () => {
-  const docs = text("../README.md");
-  assert.match(docs, /Codex interactive/i);
+test("docs/codex.md documents Codex interview mode and headless defaulting", () => {
+  const docs = text("../docs/codex.md");
   assert.match(docs, /interview/i);
   assert.match(docs, /recap/i);
   assert.match(docs, /Arm goal/i);

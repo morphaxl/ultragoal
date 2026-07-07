@@ -8,7 +8,7 @@
 
 1. **Every item checkable by a command, never vibes.** The check must be runnable in this repo, and its output must decide the item unambiguously.
    - Bad: "Database queries should be fast"
-   - Good: "All checkout queries complete in <50ms — check: `EXPLAIN ANALYZE` output for each query in `bench/queries.sql`"
+   - Good: "All checkout queries complete in <50ms — check: `psql "$DATABASE_URL" -f bench/queries.sql` (EXPLAIN ANALYZE per query) shows execution time < 50ms on every plan"
    - The check must exercise the **same layer the claim lives in**. A claim about runtime appearance or behavior ("the rail renders", "the list shows 10 cards", "the screen is visible") is satisfied only by a runtime observation — a screenshot, a rendered-size assertion, a request against the running app. `grep`, `tsc`, `eslint`, `next build`, and unit tests prove the code is *wired*; none of them prove it *renders*. A green static check on a behavioral claim is the loop's most dangerous false positive: it reads as "works" while nothing ever drew a pixel. The same trap one layer further out: a claim that crosses a **process or network boundary** — an external API, an auth handshake, a database, a third-party service — is proven only by a **real call that goes through**. Mocked unit tests prove your orchestration logic; they never prove the dependency accepts your request. Mock what you're sure of; live-test the seam you're *least* sure of (the strong instinct is to do the opposite — to mock the scary new boundary because it's hard to hit for real, which is exactly the one that breaks). And a self-disclosed "this won't actually run until X" — a missing secret, a stubbed call, "the device round will confirm" — is a *blocking* unchecked item, never a footnote on a goal that otherwise reads as done.
    - If no command can observe the behavior yet, the **first rubric item is building that check** — a script, a bench, a log line, a debug endpoint. Same rule experiments use for the measure command: construct the feedback signal, then push against it.
 2. **Incremental order.** Sequence items so earlier ones are prerequisites for later ones (schema migrates → endpoint returns 200 → error paths covered → integration tests pass → load test holds). The loop should always have a next checkable step, not one all-or-nothing finish line.
@@ -24,6 +24,9 @@
 
 - Subjective criteria ("clean", "best practices", "polished")
 - Unmeasurable goals ("noticeably faster", "more robust")
+- Compound items bundling two claims that can pass and fail independently — split them
+- Redundant items double-counting one property — merge them
+- An acceptance criterion the user voiced with no rubric item covering it — every stated criterion maps to an item, plus the ones they'd be upset to find broken but didn't say
 - Items that prescribe the approach ("uses X library", "implements the Y pattern") — outcomes only; a user-mandated approach goes in Constraints
 - Missing stop conditions
 - One giant item instead of an incremental sequence
@@ -80,15 +83,20 @@ Each item stays `[ ]` until something confirms *its own* rung — *wired* (code 
 
 ## Worked example (performance goal)
 
+This example passes the mechanical audit — a guide example that fails its own linter teaches rubrics the loop then rejects.
+
 ```
 # Rubric
-- [ ] Baseline captured: current p95 recorded in bench/BASELINE.md — check: file exists and has a number with units
+- [ ] Baseline captured: current p95 recorded in bench/BASELINE.md — check: `grep -E '[0-9]+(\.[0-9]+)? ?ms' bench/BASELINE.md` prints the recorded p95
 - [ ] All existing tests still pass — check: `pnpm test` exits 0
-- [ ] p95 latency for /api/checkout under 200ms at 100 concurrent — check: `node bench/checkout.js` report line "p95"
-- [ ] No public API shape changed — check: `pnpm test:contract` exits 0
-- [ ] Failed approaches documented in the Decision journal (at least one line per abandoned attempt)
+- [ ] p95 latency for /api/checkout under 200ms at 100 concurrent — check: `node bench/checkout.js` report line "p95" shows < 200ms against the running staging server (a real request, not a mock)
+- [ ] Checkout failure degrades safely — check: `node bench/checkout.js --force-status 500` shows a clear client error and no cascade (no logout, no blank state)
+- [ ] Failed approaches documented in the Decision journal — check: `awk '/^# Decision journal/,0' goal.md | grep -ci 'abandoned\|dead end'` prints ≥ 1
 - [ ] VERIFIER: independent sign-off recorded in the Verification log
 
 # Stop conditions
 - 25 turns reached, or p95 item fails verification 3 consecutive times, or any approach requires changing the public API
+
+# Constraints
+- No public API shape changed — check: `pnpm test:contract` exits 0
 ```

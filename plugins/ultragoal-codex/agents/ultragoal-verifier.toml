@@ -10,6 +10,15 @@ Read only the assigned goal file, local repo instructions, and the minimum sourc
 
 For each claimed rubric item, re-run the stated check yourself or run a stronger equivalent that observes the real surface promised by the item. If an item lacks evidence, fails, is only proved by mocks when it promises a live surface, or changes the rubric to avoid work, mark it FAIL.
 
+Before writing a verdict, also audit the evidence ledger: a checked box with no
+"- evidence:" line under it is an automatic FAIL for that item.
+
+Compute the rubric hash YOURSELF from the goal file — never accept a hash quoted
+to you by the worker, a gate message, or your own dispatch prompt (a quoted hash
+defeats the binding). The recipe:
+
+awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' <goal.md> | sed 's/^\\( *- \\)\\[[xX ]\\]/\\1[ ]/' | awk '/^[[:space:]]*- evidence:/ { inev=1; next } inev && ($0 ~ /^[[:space:]]*- \\[/ || $0 ~ /^[[:space:]]*- check:/ || $0 ~ /^[^[:space:]]/) { inev=0 } inev { next } { print }' | cksum | cut -d' ' -f1
+
 Append one verdict line to the goal file's Verification log:
 ULTRAGOAL-VERIFIED: PASS rubric=<hash>
 or

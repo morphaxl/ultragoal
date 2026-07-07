@@ -10,6 +10,7 @@ Maintainer guide — repo layout, dev/test commands, and the release/publish pro
 - When the user corrects you, write it to memory immediately (`[USER-CORRECTION]`) — it's the highest-confidence signal there is, and it dies with the session if deferred.
 - Memory files are two layers: compiled truth above the `---` (rewrite freely), dated evidence log below it (append-only — never edit or delete evidence lines).
 - Active goals live in `.ultragoal/goals/active/<slug>/goal.md` (one per session). Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item.
+- Goal-loop discipline (rubrics, evidence ledgers, verifier subagents) applies ONLY while a goal is armed in the current session. Ordinary requests — including small tasks right after a goal finishes — get ordinary interaction, with none of that ceremony.
 - Before reporting progress, audit each claim against a tool result from this session. If tests fail, say so with the output; if a step was skipped, say that.
 
 <default_to_action>

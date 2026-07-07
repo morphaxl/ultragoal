@@ -35,9 +35,13 @@ And the pitch in one line: **you never have to learn prompt engineering — or l
 - **The overnight build with a hard done-bar.** A bare agent stops when it *believes* it's done — and unattended, belief is all you get; Anthropic added a whole prompt block because fabricated status reports were that common. Here, stopping before an independent verifier signs off is mechanically impossible.
 - **Hill-climbing a number.** "Make CI twice as fast", "get the bundle under 200KB" — experiment goals run a measure-and-ratchet loop with a frozen measure command and every attempt journaled. The verifier re-runs the final number itself, so nobody (including the agent) quietly moves the goalpost.
 - **The week-long migration.** Sessions die — context fills, laptops sleep, someone types `/clear`. The goal lives in a file, not the session: next start, the banner says *"turn 9 of 25"* and the loop resumes the same contract.
-- **Recurring jobs that actually compound.** Weekly dependency bumps, flaky-test hunts, doc sweeps — the gate won't release a goal until its lessons are distilled into project memory, so the fourth run is genuinely smarter and cheaper than the first instead of a fresh amnesiac.
+- **Recurring jobs that actually compound.** Weekly dependency bumps, flaky-test hunts, doc sweeps — the gate won't release a goal until its lessons are distilled into project memory, so the fourth run is genuinely smarter and cheaper than the first instead of a fresh amnesiac. Wire it to a trigger and it's a full proactive loop: a `/schedule` routine or CI cron whose payload is `npx ultragoal run --headless "<brief>"` — the schedule finds the work, the goal finishes it ([recipe below](#put-a-goal-on-a-schedule)).
 - **Delegation you can't personally review.** If you don't read code, an agent's confident summary is worthless to you. The verification log and evidence ledger — real commands, real outputs, signed by a reviewer that never saw the worker's reasoning — are a trust artifact you can act on.
 - **Handing work over mid-flight.** Goal state, turn count, decision journal, and memory are git-committed. A teammate pulls, takes over the goal, and the gate holds them to the same rubric. There's no vanilla equivalent of transferring a half-finished agent engagement.
+
+### Where it sits in the loop landscape
+
+The Claude Code team's own [loop taxonomy](https://x.com/ClaudeDevs/article/2074208949205881033) sorts loops by **what you hand off**: a turn-based session hands off *the check* (verification skills), `/goal` hands off *the stop condition*, `/loop` and `/schedule` hand off *the trigger*, and a proactive loop hands off *the prompt itself*. Ultragoal is the goal-based quadrant with the rest of the hand-offs built in: the check (a rubric where every line is command-checkable, plus a fresh-eyes verifier — the 17-template library is that "encode what good looks like" layer, pre-built), the stop condition (the gate, budgets, escape hatches), and the hand-off no primitive ships — **the memory**, so each run improves the system for all future runs instead of just fixing today's instance. Put it on a schedule and you're running the proactive quadrant with the same guarantees.
 
 ## Install
 
@@ -45,7 +49,7 @@ And the pitch in one line: **you never have to learn prompt engineering — or l
 npx ultragoal
 ```
 
-An interactive installer walks you through it: choose **Claude Code**, **Codex**, or **both**. Claude Code remains the default for non-interactive installs (`--yes`) and can install to this project by default (it lands in `.claude/settings.json`, so teammates get it through git) or machine-wide with `--global`. If you pick Claude Code, the installer can also pre-configure the repo: five working-style questions, `.ultragoal/`, and the managed `CLAUDE.md` block. `--codex` installs the Codex hook-backed goal loop plugin; `--all` installs both; `uninstall` removes the selected plugins and marketplace entries. Prefer the Claude route directly? Inside Claude Code:
+An interactive installer walks you through it: choose **Claude Code**, **Codex**, or **both**. Claude Code remains the default for non-interactive installs (`--yes`) and can install to this project by default (it lands in `.claude/settings.json`, so teammates get it through git) or machine-wide with `--global`. If you pick Claude Code, the installer can also pre-configure the repo: the seven working-style questions, `.ultragoal/`, and the managed `CLAUDE.md` block. `--codex` installs the Codex hook-backed goal loop plugin; `--all` installs both; `uninstall` removes the selected plugins and marketplace entries. Prefer the Claude route directly? Inside Claude Code:
 
 ```text
 /plugin marketplace add morphaxl/ultragoal
@@ -58,70 +62,9 @@ Want it available in every project on your machine instead of just this one?
 npx ultragoal --global
 ```
 
-### Codex loop
+### Codex
 
-Ultragoal also ships a Codex plugin. It gives Codex the same core contract:
-`$ultragoal-goal` drafts a file-backed rubric, runs the pre-arm rubric audit,
-then attaches Codex's native `/goal` / Goal mode to that contract. As of the
-Codex loop release, the plugin also bundles Codex lifecycle hooks: a
-**Codex Stop hook** gate that checks active Ultragoal files, SessionStart
-context/bootstrap hooks that reload active-goal context and link bundled Codex
-roles, and a SubagentStop evidence gate for `ultragoal-executor`. Interactive
-Codex may ask you to review and trust those hooks with `/hooks`; that trust
-prompt is expected.
-
-```bash
-npx ultragoal --codex
-```
-
-Or install both surfaces in one pass:
-
-```bash
-npx ultragoal --all
-```
-
-The manual Codex route is still available:
-
-```bash
-codex plugin marketplace add morphaxl/ultragoal
-codex plugin add ultragoal-codex@morphaxl
-```
-
-Then start a new Codex session and invoke:
-
-```text
-$ultragoal-goal turn this brain dump into a rubric-backed Codex goal: ...
-```
-
-Codex interactive runs now use the same interview shape as Claude's goal front
-door. `npx ultragoal run --codex "<brief>"` starts Codex in interview mode: it
-consults memory and repo context, asks only the high-leverage questions whose
-answers change the contract, drafts the rubric, gives you a recap, then asks a
-standalone **Arm goal** confirmation before implementation begins.
-
-For an unattended Codex run, use the runner:
-
-```bash
-npx ultragoal run --codex --headless "make chat load faster without breaking tests"
-```
-
-Headless Codex does not ask interview or arm questions. It records defaults for
-ambiguous choices in the goal file, then uses `codex exec` with a
-workspace-write sandbox, approval policy `never`, and
-`--dangerously-bypass-hook-trust` for this vetted plugin run. After each Codex
-turn, the runner inspects the active Ultragoal file; if unchecked rubric items,
-missing evidence, or missing verifier/panel verdicts remain, it continues with
-`codex exec resume --last` and the exact remaining work. If your Codex build
-honors Stop-hook blocking, the bundled gate keeps the turn loop moving like the
-Claude gate. If your build treats Stop hooks as advisory, this file-backed
-resume loop is the enforcement fallback.
-
-For larger Codex goals, Ultragoal keeps the root thread as orchestrator and gives
-Codex two custom roles: `ultragoal-executor` for scoped implementation work and
-`ultragoal-verifier` for fresh-context review. Executors must finish with a
-receipt under `.ultragoal/evidence/`; the bundled SubagentStop hook rejects
-missing, empty, symlinked, or out-of-tree receipts before the root session
-accepts the subtask.
+The same contract ships for Codex: `npx ultragoal --codex` installs a Codex plugin — `$ultragoal-goal` (interview → file-backed rubric → pre-arm audit → native Goal mode), a Codex Stop-hook gate, session context hooks, and executor/verifier roles. Stop-hook blocking is **verified working** on codex-cli 0.142.x in trusted project roots; where a build treats hooks as advisory, `npx ultragoal run --codex --headless "<brief>"` enforces the same goal-file contract from outside, resuming Codex until the rubric and verdict hold. Install routes, headless semantics, roles, and known limitations: [docs/codex.md](docs/codex.md).
 
 ### Autopilot — the recommended way to run goals
 
@@ -131,19 +74,16 @@ npx ultragoal run "checkout is slow, get p95 under 200ms without breaking contra
 
 This is how ultragoal is meant to be used: one command from terminal to running goal loop. The default launches Claude Code at **full autonomy** — it makes sure the plugin is installed, then launches Claude Code with your brief armed and `--dangerously-skip-permissions`. Zero prompts of any kind until the goal is verified done. A goal loop only earns its keep when nothing blocks the turns; permission prompts are exactly the babysitting this system exists to remove — the rubric, the verifier, the budget, and the fail-open gate are the guardrails. Since Claude can run any command without asking, favor repos you can reset (git is your undo) or a container, and know your three dials: `--safe` keeps permission guardrails on (auto mode: tools auto-approved within turns, sensitive actions still ask), `--worktree` runs the goal in a fresh git worktree (an isolated checkout on its own branch — the natural pairing for full autonomy, and how parallel goals on one repo keep out of each other's files), and `--headless` runs the whole loop non-interactively, exiting when the goal completes.
 
-For Codex, add `--codex`:
+For Codex, add `--codex` (interactive: interviews, recaps, waits for **Arm goal**; `--headless`: records defaults and runs `codex exec` to completion — see [docs/codex.md](docs/codex.md)).
 
-```bash
-npx ultragoal run --codex "checkout is slow, get p95 under 200ms without breaking contract tests"
-npx ultragoal run --codex --headless "checkout is slow, get p95 under 200ms without breaking contract tests"
-```
+### Put a goal on a schedule
 
-Interactive Codex launches with approval guardrails on so you can review `/hooks`;
-it interviews, recaps, and waits for **Arm goal**. Headless Codex launches
-through `codex exec`; it does not ask questions and records defaults instead.
-`--safe` switches approvals from `never` to `on-request`. Codex `--worktree` is
-intentionally not implemented yet — create a git worktree yourself, `cd` into
-it, and run the command there.
+`npx ultragoal run --headless "<brief>"` is a complete, self-verifying unit of work — which makes it the natural payload for anything that fires on a clock or an event:
+
+- **A Claude Code routine**: `/schedule every Monday 9am: /ultragoal:goal bump dependencies — all tests green, no major versions without reading the changelog`. A project-scoped install travels with the repo (`.claude/settings.json` + `.ultragoal/` through git), so the routine gets the full harness and the repo's memory wherever it runs.
+- **CI or cron**: a nightly job that runs `npx ultragoal run --headless "fix any test that failed in tonight's suite; never weaken an assertion"` on a branch and opens a PR. The exit code is trustworthy — the runner reports success only when the goal file proves verified done.
+
+This is the proactive loop the Claude Code team describes — schedule + goal + verification + auto mode — plus the two things the bare composition doesn't give you: an independent verifier on every completion (a scheduled loop nobody watches is exactly where self-graded "done" rots), and enforced distillation, so Monday's run starts from last Monday's lessons instead of from zero.
 
 Requires Claude Code ≥ 2.1.139. The hook scripts are POSIX shell — on Windows, Claude Code runs them via Git Bash (installed with Git), or use WSL. Updates take care of themselves: project-scoped installs never auto-update natively, so ultragoal's session hook refreshes the pin in the background, at most once a day, applying on your next session (opt out with `auto-update: off` in `.ultragoal/config.md`). `npx ultragoal update` remains the manual Claude sweep — every install, user scope plus all per-project pins, in one go; use `npx ultragoal update --codex` or `--all` for the Codex loop. Uninstall with `npx ultragoal uninstall` (tries both installed surfaces; add `--codex` or `--claude` to target one, and `--purge` to also remove a repo's `.ultragoal/` data). Working in a monorepo or multi-repo workspace? Put `.ultragoal/` at the workspace root — the hooks walk up to the nearest one, so all nested repos share a single brain.
 
@@ -176,7 +116,7 @@ Want better goals from the first try? [docs/briefing-guide.md](docs/briefing-gui
 
 **Experiment goals** — "make this number better." When the brief is an optimization (build time, latency, bundle size, test runtime), ultragoal compiles it into a measure-and-ratchet loop modeled on Karpathy's [autoresearch](https://github.com/karpathy/autoresearch): establish the baseline first, then one change per experiment — commit, measure with an immutable command, keep only if the number strictly improved, `git reset` if it didn't. Every attempt lands in `results.tsv` (keeps, discards, *and* crashes), and since each row carries its commit hash, any discarded idea's full diff stays recoverable. The verifier re-runs the final measurement itself and fails the goal if the measure command was ever touched — no moving goalposts. The same pattern took Shopify from "one-shot 'make it faster' prompts fail" to a 65% faster build, unattended.
 
-Either kind starts from the **rubric library** when the brief matches a known domain: 16 research-backed templates (Next.js features, web performance, accessibility, API quality, security, bug fixes, refactors, test health, CI speed, dependency upgrades, CLI tools, docs, React Native, app-store readiness, realtime stability) with every threshold cited — Core Web Vitals, WCAG 2.2, OWASP 2025, Google's engineering practices — and every item carrying the command that proves it. A QA capability map tells the spec when a claim needs browser observation, simulator screenshots, real-device/manual evidence, live-service smokes, or failure-mode checks instead of static proxies. A mechanical rubric audit flags weak drafts before the goal can be armed. Templates also recommend skills worth pairing, like Vercel's react best-practices skills from [skills.sh](https://skills.sh).
+Either kind starts from the **rubric library** when the brief matches a known domain: 17 research-backed templates (Next.js features, web performance, accessibility, API quality, security, bug fixes, refactors, test health, CI speed, dependency upgrades, CLI tools, docs, React Native, app-store readiness, realtime stability, research/audit memos) with every threshold cited — Core Web Vitals, WCAG 2.2, OWASP 2025, Google's engineering practices — and every item carrying the command that proves it. A QA capability map tells the spec when a claim needs browser observation, simulator screenshots, real-device/manual evidence, live-service smokes, or failure-mode checks instead of static proxies. A mechanical rubric audit flags weak drafts before the goal can be armed. Templates also recommend skills worth pairing, like Vercel's react best-practices skills from [skills.sh](https://skills.sh).
 
 ## Commands
 
@@ -253,7 +193,7 @@ The engine stays simple — the gate only knows `verify: off | on | panel`; rigo
 `/goal` in Claude Code is a Stop hook under the hood: something checks a condition after every turn and blocks the stop until it holds. Ultragoal ships that same architecture — the steroids are four specific differences:
 
 - **The model can arm it.** Claude can't invoke built-in `/goal` itself; it *can* write a goal file, which is all the ultragoal gate needs. One skill takes you from ramble to running loop.
-- **It persists, and it's per-session.** Native `/goal` dies with the session and there's one at a time. The ultragoal gate reads files keyed by session, so a goal spans sessions and days — and different sessions in the same repo can each run their own goal concurrently, with the gate enforcing only the one you armed in the session that's stopping.
+- **It persists, and it's per-session.** A native `/goal` lives only in its session: `/clear` kills it, resuming resets its counters, and nothing of it survives as an artifact. The ultragoal gate reads files keyed by session, so a goal spans sessions, `/clear`s, and days — and different sessions in the same repo can each run their own goal concurrently, with the gate enforcing only the one you armed in the session that's stopping.
 - **The judge runs commands.** Native `/goal`'s evaluator only reads the transcript — the self-report channel. Ultragoal's gate is deterministic (free, instant), and completion requires a fresh-context verifier that re-ran the checks itself.
 - **Finishing requires learning.** The gate won't release until lessons are distilled to memory. Failed goals distill too — `failures.md` exists so the next attempt doesn't repeat them.
 
@@ -272,6 +212,7 @@ Always-on context cost is a handful of skill descriptions — on the order of a 
 - Lance Martin (Anthropic), [*Designing loops with Fable 5*](https://x.com/RLanceMartin/article/2064397389189071163) — loops over prompts; rubric design as the skill; verifier subagents over self-critique; the fail → investigate → verify → distill → consult progression this plugin mechanizes. His experiments run on the native primitives with a hand-written rubric — ultragoal is that practice, packaged.
 - Anthropic, [*Prompting Claude Fable 5*](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5) — the verbatim behavior blocks behind the knobs, the memory protocol, and the verification guidance.
 - Anthropic, [*Prompting best practices*](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) and the [Claude Code docs](https://code.claude.com/docs) on `/goal`, hooks, skills, and sub-agents.
+- The Claude Code team, [*Getting started with loops*](https://x.com/ClaudeDevs/article/2074208949205881033) — the official loop taxonomy (turn-based / goal-based / time-based / proactive, sorted by what you hand off) this README's landscape section maps ultragoal onto, and the source of the "encode it to improve the system for all future iterations" discipline the distill step mechanizes.
 - Andrej Karpathy, [autoresearch](https://github.com/karpathy/autoresearch) — the experiment ratchet behind experiment goals: baseline-first, strict improvement, keep/revert via git, every attempt journaled, the evaluator immutable.
 - Karpathy's [LLM-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain — the memory architecture: compiled truth over append-only evidence, per-claim provenance, lint-style maintenance.
 - Google Cloud's [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) (OKF v0.1) — convergent prior art for markdown-as-knowledge; ultragoal aligns with its conventions and extends them with provenance + a two-layer evidence model (see the memory section and DESIGN.md §7.5).

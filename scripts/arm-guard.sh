@@ -38,14 +38,35 @@ fi
 
 # Rule 2: a draft spec must exist before asking to arm — the recap is read
 # back from a real artifact, not improvised.
+draft=""
 for gf in "$UG/goals/active"/*/goal.md; do
   [ -r "$gf" ] || continue
   if sed -n 's/^status:[[:space:]]*//p' "$gf" 2>/dev/null | head -1 | grep -q '^draft'; then
-    exit 0
+    draft="$gf"
+    break
   fi
 done
 
-cat >&2 <<'EOF'
+if [ -z "$draft" ]; then
+  cat >&2 <<'EOF'
 ULTRAGOAL ARM GUARD — no draft spec exists yet. Before asking to arm: write the full spec to .ultragoal/goals/active/<slug>/goal.md with "status: draft" in the frontmatter, then show the user the recap built from that draft (what you understood, key decisions, the plan, what it will take in turns and dispatches, how done is defined), and ask the standalone "Arm goal" question in the same message. On yes, flip status: draft to active and write .turns.
 EOF
-exit 2
+  exit 2
+fi
+
+# Rule 3: the draft must pass the mechanical rubric audit before the user is
+# asked to arm it — "run the audit" failed as a prose rule, so it is a gate.
+# Blocks on BLOCKERs only (WARNs stay a judgment call, recorded in Context).
+# FAIL OPEN: no node, no audit script, or an unexpected audit outcome -> pass.
+AUDIT="$(dirname "$0")/rubric-audit.mjs"
+if command -v node >/dev/null 2>&1 && [ -r "$AUDIT" ]; then
+  audit_out="$(node "$AUDIT" "$draft" 2>/dev/null)" || true
+  if printf '%s\n' "$audit_out" | grep -q '^BLOCKER:'; then
+    {
+      echo "ULTRAGOAL ARM GUARD — the draft spec fails the mechanical rubric audit. Fix the BLOCKERs in $draft, re-run the audit, then show the updated recap and ask to arm again."
+      printf '%s\n' "$audit_out"
+    } >&2
+    exit 2
+  fi
+fi
+exit 0

@@ -67,6 +67,7 @@ ULTRAGOAL GATE — goal "$dslug" is done but still sitting in goals/active/. Fin
 1. If lessons were not yet distilled into .ultragoal/memory/, do that first (ultragoal:remember).
 2. Append its row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing).
 3. Move $gf to .ultragoal/goals/archive/$dslug.md and remove $gd.
+Then the loop is over: later requests in this session are ordinary work — no verifier subagents, no evidence ledgers, no rubrics — unless a new goal is armed.
 EOF
       exit 2
     done
@@ -243,5 +244,6 @@ ULTRAGOAL GATE — rubric complete and independently verified. Final steps befor
 2. Append a row to .ultragoal/stats.tsv (tab-separated; create with header "date	slug	kind	outcome	turns	verifier_fails	budget" if missing): today's date, "$slug", "$kind", "done", turns used ($turns), the count of FAIL verdicts in the goal file, and $budget.
 3. Move $GOAL to .ultragoal/goals/archive/$slug.md (set "status: done" in it) and remove $GDIR.
 4. Then report the outcome to the user. You have been working without them watching — your final message is their first look at any of it. Write it as a re-grounding: the outcome first, evidence for each rubric item, the two or three diffs most worth reading with their own eyes (verification proves the work passes; reading is how they keep understanding it), then the one or two things you need from them, each explained as if new. Leave behind the vocabulary you built up while working unless you re-introduce it.
+5. THE LOOP ENDS WITH THIS GOAL. Once archived, drop the goal-loop ceremony: later requests in this session are ordinary work — no verifier subagents, no evidence ledgers, no rubrics — unless the user asks for a new goal or a next round.
 EOF
 exit 2

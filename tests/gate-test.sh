@@ -41,7 +41,7 @@ verify: ${6:-on}
 created: 2026-06-10
 ---
 # Rubric
-- [ ] item one — check: \`true\`
+- [ ] item one — check: \`git status\` exits 0
 - [ ] VERIFIER: sign-off
 # Stop conditions
 - none
@@ -105,6 +105,7 @@ fresh; goalfile paused; run_gate; check "paused -> open" 0 "$RC"
 # a goal marked done but left in active/ gets ONE bookkeeping nudge, then opens
 fresh; goalfile done; run_gate
 check "done in active/ -> bookkeeping nudge" 2 "$RC" "bookkeeping" "$ERR"
+grep -q "ordinary work" "$ERR" && check "bookkeeping nudge stands the loop down" 0 0 || check "bookkeeping nudge stands the loop down" 0 1
 run_gate
 check "done in active/, already nudged -> open (fail open)" 0 "$RC"
 fresh; goalfile done task 25 "sX"; run_gate "s1"
@@ -125,6 +126,7 @@ H="$(rubric_hash)"
 printf '\nULTRAGOAL-VERIFIED: PASS rubric=%s\n' "$H" >> "$GOAL"; run_gate
 check "valid current PASS -> distill step" 2 "$RC" "Distill" "$ERR"
 grep -q "worth reading" "$ERR" && check "release report names diffs worth reading" 0 0 || check "release report names diffs worth reading" 0 1
+grep -q "LOOP ENDS WITH THIS GOAL" "$ERR" && check "release message stands the loop down" 0 0 || check "release message stands the loop down" 0 1
 
 printf 'ULTRAGOAL-VERIFIED: FAIL rubric=%s — broke\n' "$H" >> "$GOAL"; run_gate
 check "later FAIL beats older PASS" 2 "$RC" "no valid verification" "$ERR"
@@ -395,7 +397,29 @@ check "guard: arm without draft -> block" 2 "$RC" "no draft spec" "$T/g.err"
 printf '%s' "$bundle_q" | "$GUARD" 2>"$T/g.err"; RC=$?
 check "guard: bundled arm question -> block" 2 "$RC" "stand alone" "$T/g.err"
 write_goal "$UG/goals/active/d/goal.md" draft task 25 "" on d
-printf '%s' "$arm_q" | "$GUARD" 2>"$T/g.err"; check "guard: arm with draft -> pass" 0 $?
+printf '%s' "$arm_q" | "$GUARD" 2>"$T/g.err"; check "guard: arm with clean draft -> pass" 0 $?
+# a draft whose rubric fails the mechanical audit blocks the arm question
+cat > "$UG/goals/active/d/goal.md" <<'BADEOF'
+---
+slug: d
+status: draft
+budget: 25
+verify: on
+---
+# Rubric
+- [ ] thing works
+- [ ] VERIFIER: sign-off
+# Stop conditions
+- none
+BADEOF
+printf '%s' "$arm_q" | "$GUARD" 2>"$T/g.err"; RC=$?
+check "guard: arm with audit-failing draft -> block" 2 "$RC" "rubric audit" "$T/g.err"
+grep -q '^BLOCKER:' "$T/g.err" && check "guard: block message carries the BLOCKER lines" 0 0 || check "guard: block message carries the BLOCKER lines" 0 1
+# audit machinery missing -> fails open (draft present is enough): a PATH with
+# every utility the guard needs except node
+mkdir -p "$T/nodefree"
+for u in bash cat grep sed head wc tr dirname; do ln -sf "$(command -v "$u")" "$T/nodefree/$u"; done
+printf '%s' "$arm_q" | PATH="$T/nodefree" "$GUARD" 2>/dev/null; check "guard: no node on PATH fails open" 0 $?
 printf 'not json at all' | "$GUARD" 2>/dev/null; check "guard: garbage stdin fails open" 0 $?
 rm -rf "$UG"
 printf '%s' "$arm_q" | "$GUARD" 2>/dev/null; check "guard: no .ultragoal fails open" 0 $?

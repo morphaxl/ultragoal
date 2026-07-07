@@ -70,10 +70,10 @@ if [ -z "$GOAL" ]; then
       : > "$gd/.archive-nudged" 2>/dev/null || continue
       dslug=$(read_field "$gf" slug); [ -n "$dslug" ] || dslug=$(basename "$gd")
       cat >&2 <<EOF
-ULTRAGOAL CODEX GATE — goal "$dslug" is done but still active. Finish bookkeeping, then stop:
+ULTRAGOAL CODEX GATE — goal "$dslug" is done. Finish bookkeeping, then stop:
 1. Distill durable lessons into .ultragoal/memory/ if any.
 2. Append a row to .ultragoal/stats.tsv if this repo tracks stats.
-3. Archive or mark the goal complete so future Codex sessions do not enforce it.
+3. Leave the goal file exactly where it is with status: done — do NOT move or archive it; the headless runner reads it in place to confirm success, and a done goal is never enforced.
 EOF
       exit 2
     done
@@ -82,7 +82,6 @@ EOF
 fi
 
 slug=$(read_field "$GOAL" slug); [ -n "$slug" ] || slug=$(basename "$GDIR")
-kind=$(read_field "$GOAL" kind); [ -n "$kind" ] || kind=$(read_field "$GOAL" type); [ -n "$kind" ] || kind="task"
 verify=$(read_field "$GOAL" verify)
 case "$verify" in off|panel) ;; *) verify="on" ;; esac
 
@@ -194,7 +193,8 @@ cat >&2 <<EOF
 ULTRAGOAL CODEX GATE — rubric complete and independently verified. Before final stop:
 1. Distill durable lessons into .ultragoal/memory/ if the run learned anything reusable.
 2. Append/update .ultragoal/stats.tsv if this repo tracks stats.
-3. Set status: done and archive or leave a clear completion note in $GOAL.
+3. Set status: done in $GOAL and leave the file exactly where it is — do NOT move or archive it; the headless runner reads it in place to confirm success.
 4. Report outcome, verification evidence, and usage instructions to the user.
+5. The loop ends with this goal: later requests are ordinary work — no verifier dispatches, no evidence ledgers, no rubrics — unless a new goal is armed.
 EOF
 exit 2

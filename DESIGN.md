@@ -157,9 +157,10 @@ review hook trust with `/hooks`; `npx ultragoal run --codex --headless "<brief>"
 launches a vetted `codex exec` run with hook trust bypassed for automation.
 After each turn, the runner reads the active goal file and resumes with
 `codex exec resume --last` when unchecked items, missing evidence, or missing
-verifier/panel verdicts remain. If a Codex build honors Stop-hook blocking, the
-gate blocks early exits like the Claude gate. If a build treats hooks as
-advisory, this durable goal-file inspection is the enforcement fallback.
+verifier/panel verdicts remain. Stop-hook blocking is verified working on
+codex-cli 0.142.x in trusted project roots (untrusted directories downgrade it
+to advisory); where hooks are advisory, this durable goal-file inspection is
+the enforcement fallback. Current usage and limitations: docs/codex.md.
 
 ### Every session benefits, even without a goal
 

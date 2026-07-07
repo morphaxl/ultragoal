@@ -127,8 +127,15 @@ EOF
 # Verification log
 EOF
 }
+# Mirror of the CODEX GATE's hash pipeline (codex-goal-gate.sh) — the runner's JS
+# hash must produce the same value for these tests to pass, so this doubles as a
+# cross-implementation golden test. Keep in lockstep with the gate.
 rubric_hash() {
-  printf '3458076715\\n'
+  awk '/^#[[:space:]]+Rubric/{f=1; next} /^#[[:space:]]/{f=0} f' .ultragoal/codex-goals/demo/goal.md | sed 's/^\\( *- \\)\\[[xX ]\\]/\\1[ ]/' | awk '
+  /^[[:space:]]*- evidence:/ { inev=1; next }
+  inev && ($0 ~ /^[[:space:]]*- \\[/ || $0 ~ /^[[:space:]]*- check:/ || $0 ~ /^[^[:space:]]/) { inev=0 }
+  inev { next }
+  { print }' | cksum | cut -d' ' -f1
 }
 case " $* " in
   *" exec resume "*)

@@ -206,6 +206,7 @@ function section(text, heading) {
 }
 
 function normalizeRubricForHash(rubric) {
+  if (!rubric) return '';
   const out = [];
   let inEvidence = false;
   for (const raw of rubric.split(/\r?\n/)) {
@@ -220,7 +221,10 @@ function normalizeRubricForHash(rubric) {
     if (inEvidence) continue;
     out.push(line);
   }
-  return out.join('\n');
+  // Trailing newline matters: the gate pipes awk output (newline-terminated) into
+  // cksum, so the runner must hash the identical byte stream or verdicts bound to
+  // the gate's hash read as stale here.
+  return out.length ? `${out.join('\n')}\n` : '';
 }
 
 function cksum(text) {
@@ -749,6 +753,21 @@ if (args[0] === 'uninstall') {
       us.start('Removing the Codex marketplace entry');
       const mk = codex(['plugin', 'marketplace', 'remove', CODEX_MARKETPLACE_NAME]);
       us.stop(mk.status === 0 ? 'Codex marketplace removed' : pc.dim('Codex marketplace was not registered'));
+
+      // The installer copies ultragoal-*.toml into ~/.codex/agents/ — mirror that here.
+      const agentsDir = join(codexHome(), 'agents');
+      let removedAgents = 0;
+      if (existsSync(agentsDir)) {
+        for (const name of readdirSync(agentsDir).filter((n) => /^ultragoal-.*\.toml$/.test(n))) {
+          try {
+            rmSync(join(agentsDir, name));
+            removedAgents++;
+          } catch {
+            // best-effort cleanup
+          }
+        }
+      }
+      if (removedAgents > 0) p.log.info(`Removed ${removedAgents} copied Codex agent file(s) from ${agentsDir}`);
     }
   }
 
@@ -881,6 +900,7 @@ const FIXED_CORE = `<!-- ultragoal:start — managed block; edit knobs via /ultr
 - When the user corrects you, write it to memory immediately (\`[USER-CORRECTION]\`) — it's the highest-confidence signal there is, and it dies with the session if deferred.
 - Memory files are two layers: compiled truth above the \`---\` (rewrite freely), dated evidence log below it (append-only — never edit or delete evidence lines).
 - Active goals live in \`.ultragoal/goals/active/<slug>/goal.md\` (one per session). Never check a rubric box without evidence from a command run this session, and never self-certify the VERIFIER item.
+- Goal-loop discipline (rubrics, evidence ledgers, verifier subagents) applies ONLY while a goal is armed in the current session. Ordinary requests — including small tasks right after a goal finishes — get ordinary interaction, with none of that ceremony.
 - Before reporting progress, audit each claim against a tool result from this session. If tests fail, say so with the output; if a step was skipped, say that.`;
 
 const MEMORY_FILES = {

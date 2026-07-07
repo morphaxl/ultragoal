@@ -22,18 +22,24 @@ const VAGUE_TERMS = [
   "user-friendly",
 ];
 
-const BEHAVIOR_TERMS = [
+// Explicit visual claims: static-only proof is the empty-rail false positive — a blocker.
+const STRONG_BEHAVIOR_TERMS = [
   "appears",
-  "click",
-  "display",
   "displays",
   "render",
   "renders",
-  "screen",
   "shows",
+  "visible",
+];
+
+// Ambiguous terms ("screen" in a pure-logic claim, "click" handlers unit-tested):
+// static-only proof is suspicious but legitimate often enough to stay a warning.
+const WEAK_BEHAVIOR_TERMS = [
+  "click",
+  "display",
+  "screen",
   "tap",
   "ui",
-  "visible",
 ];
 
 const RUNTIME_OBSERVATION_TERMS = [
@@ -167,6 +173,11 @@ export function auditRubric(text, file = "<input>") {
 
   if (!rubric.trim()) {
     issues.push(blocker("No # Rubric section found."));
+  } else if (isGoalSpec(text) && headingLevel(text, "Rubric") > 1) {
+    // Library templates nest "## Rubric" inside a doc; a real goal spec (status: frontmatter)
+    // must use level-1 "# Rubric" — the gate parses only level-1, so a nested heading makes
+    // the whole rubric invisible to it and the goal can release unearned.
+    issues.push(blocker('The Rubric heading must be level-1 ("# Rubric") in a goal spec — the gate only parses level-1 headings, so a nested rubric is invisible to it.'));
   }
   if (items.length === 0) {
     issues.push(blocker("No checkbox rubric items found."));
@@ -213,13 +224,16 @@ export function auditRubric(text, file = "<input>") {
       issues.push(warn(`Rubric item ${item.number} may be compound; split if one half can pass while the other fails: ${shorten(claim)}`));
     }
 
-    const behaviorClaim = termsIn(claimLower, BEHAVIOR_TERMS).length > 0;
+    const strongBehaviorClaim = termsIn(claimLower, STRONG_BEHAVIOR_TERMS).length > 0;
+    const behaviorClaim = strongBehaviorClaim || termsIn(claimLower, WEAK_BEHAVIOR_TERMS).length > 0;
     const runtimeObservation = termsIn(lower, RUNTIME_OBSERVATION_TERMS).length > 0;
     const staticOnly = termsIn(lower, STATIC_ONLY_TERMS).length > 0;
     hasUiBehavior ||= behaviorClaim;
     hasRuntimeUiObservation ||= behaviorClaim && runtimeObservation;
-    if (behaviorClaim && staticOnly && !runtimeObservation) {
+    if (strongBehaviorClaim && staticOnly && !runtimeObservation) {
       issues.push(blocker(`Rubric item ${item.number} makes a UI/runtime claim but only cites static checks: ${shorten(claim)}`));
+    } else if (behaviorClaim && staticOnly && !runtimeObservation) {
+      issues.push(warn(`Rubric item ${item.number} may be a UI/runtime claim proved only by static checks; add a runtime observation or reword if it is pure logic: ${shorten(claim)}`));
     }
 
     const reachabilityClaim = termsIn(claimLower, REACHABILITY_TERMS).length > 0;
@@ -290,6 +304,23 @@ function emit(result, json) {
   }
 }
 
+function isGoalSpec(text) {
+  const trimmed = text.trimStart();
+  if (!trimmed.startsWith("---")) return false;
+  const end = trimmed.indexOf("\n---", 3);
+  if (end === -1) return false;
+  return /^status\s*:/m.test(trimmed.slice(0, end));
+}
+
+function headingLevel(text, heading) {
+  const pattern = new RegExp(`^(#{1,6})\\s+${escapeRegExp(heading)}\\s*$`, "i");
+  for (const line of text.split(/\r?\n/)) {
+    const match = line.trim().match(pattern);
+    if (match) return match[1].length;
+  }
+  return 0;
+}
+
 function section(text, heading) {
   const lines = text.split(/\r?\n/);
   const startPattern = new RegExp(`^(#{1,6})\\s+${escapeRegExp(heading)}\\s*$`, "i");
@@ -355,8 +386,12 @@ function hasStructuredObservationCheck(text) {
 }
 
 function looksLikeCommand(command) {
-  const first = command.trim().split(/\s+/)[0];
-  return /^(?:\.{0,2}\/|adb|bash|bun|bundle|cargo|claude|curl|deno|docker|docker-compose|eas|eslint|expo|fastlane|git|go|gradle|grep|jest|make|node|npm|npx|pnpm|pytest|python|python3|rg|rspec|ruby|sh|swift|test|tsc|tsx|vitest|xcodebuild|xcrun|yarn)$/i.test(first);
+  // Strip leading VAR=value environment prefixes (`SMOKE_BASE_URL=... node script.mjs`).
+  const words = command.trim().split(/\s+/);
+  let index = 0;
+  while (index < words.length - 1 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[index])) index += 1;
+  const first = words[index];
+  return /^(?:\.{0,2}\/|adb|awk|bash|bun|bundle|cargo|cat|claude|codex|curl|cut|deno|diff|docker|docker-compose|eas|eslint|expo|fastlane|find|gh|git|go|gradle|grep|head|hyperfine|jest|jq|lighthouse|ls|make|node|npm|npx|pnpm|psql|pytest|python|python3|rg|rspec|ruby|sed|sh|sort|sqlite3|swift|tail|test|time|tr|tsc|tsx|uniq|vitest|wc|xargs|xcodebuild|xcrun|yarn)$/i.test(first);
 }
 
 function termsIn(text, terms) {

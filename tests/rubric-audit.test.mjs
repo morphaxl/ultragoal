@@ -115,7 +115,7 @@ test("blocks backticked expected values masquerading as commands", () => {
   assert.match(result.issues.map((issue) => issue.message).join("\n"), /do not look like an executable command/);
 });
 
-test("accepts rubric sections written as nested markdown headings", () => {
+test("accepts rubric sections written as nested markdown headings in library templates", () => {
   const result = auditRubric(`
 # Template
 
@@ -132,4 +132,67 @@ test("accepts rubric sections written as nested markdown headings", () => {
 
   assert.equal(result.status, "PASS");
   assert.deepEqual(result.issues.filter((issue) => issue.severity === "BLOCKER"), []);
+});
+
+test("blocks nested rubric headings in a goal spec — the gate only parses level-1", () => {
+  const result = auditRubric(`---
+slug: demo
+status: draft
+budget: 25
+---
+
+# Objective
+Demo.
+
+## Rubric
+- [ ] Static wiring passes — check: \`pnpm typecheck\` exits 0
+- [ ] VERIFIER: independent sign-off recorded in the Verification log
+
+## Stop conditions
+- 25 turns reached
+`);
+
+  assert.equal(result.status, "FAIL");
+  assert.match(result.issues.map((issue) => issue.message).join("\n"), /level-1/);
+});
+
+test("accepts common unix text tools and env-var prefixes as check commands", () => {
+  const result = auditRubric(`---
+slug: demo
+status: draft
+---
+
+# Rubric
+- [ ] Exactly 3 endpoints documented — check: \`awk '/^# API/,/^# End/' docs/api.md | grep -c '^### ' \` prints 3
+- [ ] Log has no errors — check: \`wc -l < errors.log\` prints 0
+- [ ] Config key present — check: \`jq -e '.retry' config.json\` exits 0
+- [ ] Smoke passes against local server — check: \`SMOKE_BASE_URL=http://127.0.0.1:3000 node scripts/smoke.mjs\` exits 0
+- [ ] VERIFIER: independent sign-off recorded in the Verification log
+
+# Stop conditions
+- 10 turns reached
+
+# Constraints
+- Scope stays local — check: \`git diff --stat main\` reviewed
+`);
+
+  assert.equal(result.status, "PASS");
+  assert.deepEqual(result.issues.filter((issue) => issue.severity === "BLOCKER"), []);
+});
+
+test("warns instead of blocking when an ambiguous behavior term has a static check", () => {
+  const result = auditRubric(`
+# Rubric
+- [ ] Screen state machine returns the right variant per error code — check: \`pnpm vitest run state.test.ts\` exits 0
+- [ ] VERIFIER: independent sign-off recorded in the Verification log
+
+# Stop conditions
+- 10 turns reached
+
+# Constraints
+- Scope stays local — check: \`git diff --stat main\` reviewed
+`);
+
+  assert.equal(result.status, "PASS");
+  assert.match(result.issues.map((issue) => issue.message).join("\n"), /may be a UI\/runtime claim/);
 });

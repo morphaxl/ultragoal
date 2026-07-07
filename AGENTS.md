@@ -51,4 +51,5 @@ CI also runs `tests/gate-test.sh`, the installer syntax check, and `npm pack --d
 - Commit messages: imperative, no AI-tooling mentions or trailers.
 - Skills state outcomes and protocols, not step-by-step scripts (over-prescriptive skills degrade Fable 5 output).
 - `scripts/` stays POSIX shell and **fail-open** — the gate must never be able to trap a session; every new gate behavior gets a `tests/gate-test.sh` case.
+- Files the Codex plugin ships as standalone copies (`rubric-audit.mjs`, `rubric-guide.md`, `qa-capability-map.md`) are guarded byte-identical by `tests/codex-sync.test.mjs`: edit the canonical file (repo `scripts/` or `skills/goal/`), then copy it over the `plugins/ultragoal-codex/` twin. The Codex runner's JS rubric hash must match the gate's shell hash byte-for-byte — `tests/codex-runner.test.mjs` computes the fixture hash with the gate's own pipeline, so a divergence fails tests.
 - Dated thresholds in the rubric library (Play API levels, OWASP/WCAG versions, CWV numbers) carry a re-verify note; refresh them when they age.

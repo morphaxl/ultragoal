@@ -1,96 +1,73 @@
 #!/usr/bin/env bash
-# Live smoke for Codex Stop-hook behavior. This intentionally exits 0 even when
-# the live Codex run is unavailable; in that case it prints the documented
-# runner fallback so release checks can proceed without faking hook semantics.
+# Live smoke for Codex Stop-hook blocking via the INSTALLED ultragoal-codex plugin.
+#
+# The old version of this smoke wrote a project-level .codex/hooks.json — a surface
+# current Codex builds ignore — so it reported "hooks don't block" while the plugin
+# hook demonstrably does (verified live on codex-cli 0.142.5, 2026-07-07). This
+# version exercises the real surface: the plugin's own Stop hook from the Codex
+# plugin cache, against a scratch repo with an active budget:1 goal.
+#
+# Informational by design — always exits 0 (CI has no Codex). Outputs are honest:
+#   CODEX_STOP_HOOK_BLOCKS=1        plugin gate blocked and Codex kept working
+#   CODEX_STOP_HOOK_BLOCKS=0        gate fired once but Codex stopped (advisory build;
+#                                   the headless runner is the enforcement fallback)
+#   CODEX_STOP_HOOK_SMOKE=SKIPPED   surface unavailable — NO claim about blocking made
 set -u
 
-CODEX_BIN="${HOME}/.bun/bin/codex"
-if [ ! -x "$CODEX_BIN" ]; then
-  CODEX_BIN="$(command -v codex 2>/dev/null || true)"
-fi
-
+CODEX_BIN="$(command -v codex 2>/dev/null || true)"
+[ -x "${HOME}/.bun/bin/codex" ] && CODEX_BIN="${HOME}/.bun/bin/codex"
 if [ -z "$CODEX_BIN" ]; then
-  echo "CODEX_STOP_HOOK_BLOCKS=0 fallback=codex-runner reason=codex-missing"
+  echo "CODEX_STOP_HOOK_SMOKE=SKIPPED reason=codex-missing"
   exit 0
 fi
 
-ROOT="$(pwd)"
-T="$(mktemp -d "${ROOT}/.codex-hook-smoke.XXXXXX")"
-LOG="$T/codex.jsonl"
-HOOK_SCRIPT="$T/stop-hook.sh"
-cat > "$HOOK_SCRIPT" <<'EOF'
-#!/bin/sh
-count_file="$1"
-n=0
-[ -f "$count_file" ] && n=$(cat "$count_file" 2>/dev/null || echo 0)
-n=$((n + 1))
-echo "$n" > "$count_file"
-if [ "$n" -eq 1 ]; then
-  echo HOOK_BLOCKED_ONCE >&2
-  exit 2
-fi
-exit 0
-EOF
-chmod +x "$HOOK_SCRIPT"
-COUNT="$T/count.txt"
-HOOKS_DIR="$ROOT/.codex"
-HOOKS_FILE="$HOOKS_DIR/hooks.json"
-BACKUP="$T/hooks.json.backup"
-had_hooks=0
-had_dir=0
-[ -d "$HOOKS_DIR" ] && had_dir=1
-if [ -f "$HOOKS_FILE" ]; then
-  cp "$HOOKS_FILE" "$BACKUP"
-  had_hooks=1
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+GATE_IN_CACHE="$(ls "$CODEX_HOME_DIR"/plugins/cache/*/ultragoal-codex/*/scripts/codex-goal-gate.sh 2>/dev/null | head -1)"
+if [ -z "$GATE_IN_CACHE" ]; then
+  echo "CODEX_STOP_HOOK_SMOKE=SKIPPED reason=plugin-not-installed (install: codex plugin add ultragoal-codex@morphaxl)"
+  exit 0
 fi
 
-cleanup() {
-  if [ "$had_hooks" -eq 1 ]; then
-    mkdir -p "$HOOKS_DIR"
-    cp "$BACKUP" "$HOOKS_FILE" 2>/dev/null || true
-  else
-    rm -f "$HOOKS_FILE" 2>/dev/null || true
-  fi
-  if [ "$had_dir" -eq 0 ]; then
-    rmdir "$HOOKS_DIR" 2>/dev/null || true
-  fi
-  rm -rf "$T" 2>/dev/null || true
-}
-trap cleanup EXIT
-
-mkdir -p "$HOOKS_DIR"
-cat > "$HOOKS_FILE" <<EOF
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"$HOOK_SCRIPT\" \"$COUNT\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ]
-  }
-}
+# Scratch repo with an active budget:1 goal. If Codex honors Stop-hook blocking,
+# the gate fires more than once (.turns >= 2): first block feeds the rubric back,
+# the budget then forces a warn -> pause, all bounded to a handful of turns.
+# If hooks are advisory, Codex stops after the first block and .turns stays 1.
+# The scratch dir lives INSIDE the current (trusted) checkout and is NOT its own
+# git root: Codex resolves trust by project root, so a system-temp dir or a nested
+# git repo reads as untrusted and blocking is downgraded to advisory there. The
+# goal gate walks up from PWD and stops at the first .ultragoal, keeping this
+# scratch goal isolated from the checkout's own state.
+T="$(mktemp -d "$(pwd)/.codex-hook-smoke.XXXXXX")"
+trap 'rm -rf "$T"' EXIT
+GDIR="$T/.ultragoal/goals/active/smoke"
+mkdir -p "$GDIR"
+cat > "$GDIR/goal.md" <<'EOF'
+---
+slug: smoke
+status: active
+budget: 1
+verify: on
+---
+# Rubric
+- [ ] intentionally unreachable smoke item — check: `git log --oneline -1 refs/ultragoal-smoke-never-exists` exits 0
+- [ ] VERIFIER: independent sign-off recorded below
+# Stop conditions
+- 1 turn reached (this smoke expects to hit the budget immediately)
 EOF
 
-(cd "$ROOT" && "$CODEX_BIN" --sandbox read-only --ask-for-approval never --dangerously-bypass-hook-trust exec --json "Reply with exactly READY." >"$LOG" 2>&1)
+LOG="$(mktemp)"
+(cd "$T" && "$CODEX_BIN" --sandbox workspace-write --ask-for-approval never --dangerously-bypass-hook-trust exec "Reply with exactly READY." >"$LOG" 2>&1)
 status=$?
-count=0
-[ -f "$COUNT" ] && count="$(cat "$COUNT" 2>/dev/null || echo 0)"
+turns=0
+[ -r "$GDIR/.turns" ] && turns="$(tr -dc '0-9' < "$GDIR/.turns" 2>/dev/null)"
 
-if [ "$status" -eq 0 ] && [ "${count:-0}" -ge 2 ]; then
-  echo "CODEX_STOP_HOOK_BLOCKS=1 attempts=$count"
-  exit 0
-fi
-
-if [ "${count:-0}" -eq 1 ]; then
-  echo "CODEX_STOP_HOOK_BLOCKS=0 fallback=codex-runner attempts=$count status=$status"
+if [ "${turns:-0}" -ge 2 ]; then
+  echo "CODEX_STOP_HOOK_BLOCKS=1 gate_firings=$turns status=$status"
+elif [ "${turns:-0}" -eq 1 ]; then
+  echo "CODEX_STOP_HOOK_BLOCKS=0 gate_firings=1 status=$status (gate fired once; Codex stopped anyway — advisory build; headless runner is the enforcement fallback)"
 else
-  echo "CODEX_STOP_HOOK_BLOCKS=0 fallback=codex-runner reason=smoke-unavailable attempts=${count:-0} status=$status"
+  echo "CODEX_STOP_HOOK_SMOKE=SKIPPED reason=gate-never-fired status=$status (plugin hook did not run — check plugin trust via /hooks)"
+  tail -5 "$LOG" 2>/dev/null | sed 's/^/codex-smoke: /'
 fi
-tail -20 "$LOG" 2>/dev/null | sed 's/^/codex-smoke: /'
+rm -f "$LOG"
 exit 0

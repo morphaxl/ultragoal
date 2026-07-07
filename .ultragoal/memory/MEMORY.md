@@ -20,6 +20,7 @@
 - rubric count-checks that grep the goal file self-match the rubric's own text — scope to the section (verifier-appended verdict tables at file end self-match too)
 - rubric hash binds to check text only (v1.1.0+): box flips and evidence lines never void a verdict; editing a check always does. Scoped interim checks write ULTRAGOAL-INTERIM lines, which the gate ignores
 - research-scout prompts on Fable 5: keep an explicit software-engineering-register line, or classifier triggers can switch the session model mid-run
+- Codex: Stop-hook blocking works ONLY in trusted project roots (temp dirs / nested git inits = advisory; smoke must run in a plain subdir of a trusted checkout); the runner's JS rubric hash must byte-match the gate's awk|cksum incl. trailing newline; never tell the model to ARCHIVE a done goal (runner searches active dirs only); Codex-plugin file copies guarded by tests/codex-sync.test.mjs — facts.md
 
 ## Hot files
 - `scripts/goal-gate.sh` ⇄ `tests/gate-test.sh` — change together, always
