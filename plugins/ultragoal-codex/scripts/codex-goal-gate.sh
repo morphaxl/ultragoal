@@ -194,7 +194,8 @@ ULTRAGOAL CODEX GATE — rubric complete and independently verified. Before fina
 1. Distill durable lessons into .ultragoal/memory/ if the run learned anything reusable.
 2. Append/update .ultragoal/stats.tsv if this repo tracks stats.
 3. Set status: done in $GOAL and leave the file exactly where it is — do NOT move or archive it; the headless runner reads it in place to confirm success.
-4. Report outcome, verification evidence, and usage instructions to the user.
-5. The loop ends with this goal: later requests are ordinary work — no verifier dispatches, no evidence ledgers, no rubrics — unless a new goal is armed.
+4. Graduate durable rubric checks into .ultragoal/invariants/$slug-<n>.md (predicate/born/source/status/last-pass/on-violation lines; skip one-time checks) — "npx ultragoal invariants" re-verifies them forever.
+5. Report outcome, verification evidence, and usage instructions to the user.
+6. The loop ends with this goal: later requests are ordinary work — no verifier dispatches, no evidence ledgers, no rubrics — unless a new goal is armed.
 EOF
 exit 2

@@ -38,6 +38,8 @@ And the pitch in one line: **you never have to learn prompt engineering — or l
 - **Recurring jobs that actually compound.** Weekly dependency bumps, flaky-test hunts, doc sweeps — the gate won't release a goal until its lessons are distilled into project memory, so the fourth run is genuinely smarter and cheaper than the first instead of a fresh amnesiac. Wire it to a trigger and it's a full proactive loop: a `/schedule` routine or CI cron whose payload is `npx ultragoal run --headless "<brief>"` — the schedule finds the work, the goal finishes it ([recipe below](#put-a-goal-on-a-schedule)).
 - **Delegation you can't personally review.** If you don't read code, an agent's confident summary is worthless to you. The verification log and evidence ledger — real commands, real outputs, signed by a reviewer that never saw the worker's reasoning — are a trust artifact you can act on.
 - **Handing work over mid-flight.** Goal state, turn count, decision journal, and memory are git-committed. A teammate pulls, takes over the goal, and the gate holds them to the same rubric. There's no vanilla equivalent of transferring a half-finished agent engagement.
+- **Work that stays done.** A goal you verify once is an assumption with a timestamp — the world drifts, and yesterday's proven thing silently stops being true. Here a finished goal *graduates*: its durable rubric checks become standing invariants in `.ultragoal/invariants/`, and `npx ultragoal invariants` re-verifies every one of them (a natural cron/`/schedule` payload; exit 1 on violations). Violations are detected, never auto-fixed — the fix goes through a new goal, with full loop discipline. Nothing you finish goes unwatched.
+- **Work bigger than one goal.** When a brief would blow one goal's context or spans different verification regimes, the skill proposes a **program** — an ordered chain of goals with a verified checkpoint and a fresh context at every cut, replanned between links from what actually happened, with parallel spans only where blast radii provably don't overlap. One ratification arms the chain. The protocol: [docs/programs.md](docs/programs.md).
 
 ### Where it sits in the loop landscape
 
@@ -147,6 +149,8 @@ Everything the plugin produces is plain markdown you own — editable, diffable,
 │   │       ├── goal.md  #   the spec: rubric, verification log, decision journal
 │   │       └── results.tsv  # experiment goals: every attempt with its commit hash
 │   └── archive/         # finished and abandoned goals (their journals feed memory)
+├── invariants/          # graduated rubric checks — one predicate per file,
+│                        #   re-verified forever by `npx ultragoal invariants`
 └── memory/
     ├── MEMORY.md        # index + fixed slots (commands, invariants, gotchas, hot files)
     ├── facts.md         # what's true of this repo
@@ -217,6 +221,7 @@ Always-on context cost is a handful of skill descriptions — on the order of a 
 - The Claude Code team, [*Getting started with loops*](https://x.com/ClaudeDevs/article/2074208949205881033) — the official loop taxonomy (turn-based / goal-based / time-based / proactive, sorted by what you hand off) this README's landscape section maps ultragoal onto, and the source of the "encode it to improve the system for all future iterations" discipline the distill step mechanizes.
 - Andrej Karpathy, [autoresearch](https://github.com/karpathy/autoresearch) — the experiment ratchet behind experiment goals: baseline-first, strict improvement, keep/revert via git, every attempt journaled, the evaluator immutable.
 - Karpathy's [LLM-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Garry Tan's gbrain — the memory architecture: compiled truth over append-only evidence, per-claim provenance, lint-style maintenance.
+- Avid's [Agentic OS builder's guide](https://x.com/av1dlive/status/2074169173178212621) — the standing-goals graduation pattern behind `.ultragoal/invariants/` ("a goal you only verify once is an assumption with a timestamp"), the earned-autonomy framing behind the arm-time stats glance, and the "a number, a never, or a command" constraint test.
 - Google Cloud's [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) (OKF v0.1) — convergent prior art for markdown-as-knowledge; ultragoal aligns with its conventions and extends them with provenance + a two-layer evidence model (see the memory section and DESIGN.md §7.5).
 
 Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](DESIGN.md).
@@ -235,7 +240,7 @@ Design rationale, trade-offs, and the competitive landscape live in [DESIGN.md](
 
 **How do I change my setup answers later?** They're just markdown: edit `.ultragoal/config.md` directly (flip `verification` to `off`, change `scope`, anything), or re-run `/ultragoal:setup` to be re-asked interactively. Changes apply to the next goal you arm.
 
-**Does it spend a lot of tokens?** The gate itself is free (no model call). The loop spends what the work needs — that's the point of goal-directed runs. Budgets cap the blast radius — pick the depth tier when arming (a quick pass for your first goal) to calibrate.
+**Does it spend a lot of tokens?** The gate itself is free (no model call). The loop spends what the work needs — that's the point of goal-directed runs. Budgets cap the blast radius — pick the depth tier when arming (a quick pass for your first goal) to calibrate. And for execution-heavy goals there's an **economy dial**, offered beside depth and rigor when it can actually change the bill: the session model stays orchestrator and advisor — interview, spec, decisions, diff review, verification — while cheaper Sonnet executor subagents do the implementation, escalating up when stuck. It's Anthropic's published plan-big-execute-small pattern (their numbers: a Fable 5 orchestrator with Sonnet 5 workers keeps 96% of Fable's quality at 46% of the price; the inverse advisor shape, ~92% at ~63%), and ultragoal is unusually well-placed to run it: cheap executors are only safe when the checking around them is strong, and the rubric + independent verifier are exactly that checking. The verifier is never downgraded.
 
 **Can I run it unattended?** Yes — that's the recommended mode: `npx ultragoal run "<brief>"` launches at full autonomy, and `--headless` runs the loop to completion with no UI at all. The discipline lives in the rubric, the verifier, and the budget — not in you approving each tool call.
 

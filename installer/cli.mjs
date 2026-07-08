@@ -581,6 +581,9 @@ if (flag('--help') || flag('-h')) {
         --headless             non-interactive: runs the loop to completion and exits;
                                supervised — a dead claude process is resumed against
                                the goal file (cap: ULTRAGOAL_RUNNER_MAX_TURNS, 25)
+    npx ultragoal invariants   re-verify all standing invariants (graduated
+                               rubric checks in .ultragoal/invariants/);
+                               exit 1 on violations — cron/schedule friendly
     npx ultragoal update       update Claude Code installs — user scope and all
                                per-project pins
     npx ultragoal update --codex
@@ -669,6 +672,51 @@ if (args[0] === 'run') {
 }
 
 // ---------------------------------------------------------------- update ---
+// ------------------------------------------------------------ invariants ---
+// Standing invariants: finished goals graduate durable rubric checks into
+// .ultragoal/invariants/<name>.md (one `predicate:` command per file). This
+// re-verifies them all — detection only; fixes go through a new goal. Exit 1
+// on any violation so cron/CI/schedule payloads can alert on it.
+if (args[0] === 'invariants') {
+  const root = findUltragoalRoot(process.cwd());
+  const dir = join(root, '.ultragoal', 'invariants');
+  if (!existsSync(dir)) {
+    console.log('No .ultragoal/invariants/ yet — finished goals graduate durable rubric checks there.');
+    process.exit(0);
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const ledger = join(dir, '.ledger.tsv');
+  const violated = [];
+  let checked = 0;
+  for (const name of readdirSync(dir).filter((n) => n.endsWith('.md')).sort()) {
+    const file = join(dir, name);
+    let text = readFileSync(file, 'utf8');
+    if (/^status:\s*retired/m.test(text)) continue;
+    const pred = (text.match(/^predicate:\s*(.+)$/m) || [])[1];
+    if (!pred) continue;
+    checked++;
+    const started = Date.now();
+    const res = spawnSync('bash', ['-c', pred], { timeout: 60000, stdio: ['ignore', 'ignore', 'ignore'] });
+    const ok = (res.status ?? 1) === 0 && !res.error;
+    if (ok) {
+      text = text.replace(/^status:.*$/m, 'status: satisfied').replace(/^last-pass:.*$/m, `last-pass: ${today}`);
+    } else {
+      text = text.replace(/^status:.*$/m, 'status: VIOLATED');
+      violated.push({ name: name.replace(/\.md$/, ''), onViolation: (text.match(/^on-violation:\s*(.+)$/m) || [])[1] || 'report' });
+    }
+    writeFileSync(file, text);
+    appendFileSync(ledger, `${new Date().toISOString()}\t${name.replace(/\.md$/, '')}\t${ok ? 'pass' : 'FAIL'}\t${Date.now() - started}\n`);
+  }
+  if (violated.length > 0) {
+    console.error(`INVARIANTS VIOLATED (${violated.length} of ${checked}):`);
+    for (const v of violated) console.error(`- ${v.name} — on-violation: ${v.onViolation}`);
+    console.error('Detection only: route the fix through a new goal (/ultragoal:goal), never a silent auto-fix.');
+    process.exit(1);
+  }
+  console.log(checked === 0 ? 'No active invariants.' : `All ${checked} standing invariant(s) hold.`);
+  process.exit(0);
+}
+
 if (args[0] === 'update') {
   banner();
   p.intro(pc.bgBlue(pc.black(' ultragoal updater ')));
@@ -1127,7 +1175,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 
   // .gitignore entries
   const gi = join(root, '.gitignore');
-  const wanted = ['.ultragoal/goals/active/*/.turns', '.ultragoal/goals/active/*/.rubric-hash', '.ultragoal/memory/.sessions', '.claude/settings.local.json'];
+  const wanted = ['.ultragoal/goals/active/*/.turns', '.ultragoal/goals/active/*/.rubric-hash', '.ultragoal/memory/.sessions', '.ultragoal/invariants/.ledger.tsv', '.claude/settings.local.json'];
   if (picks.memory === 'local') wanted.push('.ultragoal/memory/');
   let existing = existsSync(gi) ? readFileSync(gi, 'utf8') : '';
   if (picks.memory === 'git' && /^\.ultragoal\/memory\/\s*$/m.test(existing)) {
