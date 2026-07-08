@@ -122,6 +122,8 @@ Either kind starts from the **rubric library** when the brief matches a known do
 
 ## Commands
 
+**New here, or unsure which piece fits?** The **[field guide](docs/guide.md)** maps every use case to the right tool — chat vs `/goal` vs a goal vs a program, the three dials, scheduled runs, invariants — with worked examples and the mistakes to skip.
+
 | Command | What it does |
 |---|---|
 | `/ultragoal:goal <brain dump>` | The front door: interview → spec → armed loop → execution |
