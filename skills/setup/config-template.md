@@ -20,6 +20,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | verification-cadence | final \| every-claim |
 | interview-depth | adaptive \| quick \| deep |
 | auto-update | on \| off |
+| auto-memory | unified \| separate |
 
 Notes:
 - rigor (default vanilla) scales how much scaffolding the harness wraps around the model — match it to model strength. It is a meta-knob: the goal skill reads it and chooses the loop's shape; the individual knobs below override it when set explicitly.
@@ -32,5 +33,6 @@ Notes:
 - default-budget is the `budget:` a new goal spec starts with — max gate-checked turns. The goal skill asks it per goal as a depth tier — quick pass (~10) · standard (25) · deep (60+) — and writes the chosen cap into the spec.
 - verification-cadence: final (default) = one verifier pass at the sign-off, plus early dispatch for shaky or previously-failed items; every-claim = verify before checking each box — stricter and costlier.
 - auto-update: on (default) = the SessionStart hook refreshes this repo's plugin pin in the background, at most once a day per machine, applying on the next session — project-scoped installs never auto-update natively. off = update only via npx ultragoal update.
+- auto-memory: unified (default) = Claude Code's native per-project auto memory (v2.1.59+, on by default) is pointed at `.ultragoal/memory` via an `autoMemoryDirectory` key in `.claude/settings.local.json` (per-machine absolute path; setup adds the key only if absent, never overwrites one). One brain: "remember X" and native memory writes land in the shared, provenance-tagged store, and the session banner stops injecting the index head since native injection already covers it. Teammates without the local key get a one-line banner nudge to add it. separate = leave native auto memory alone (it stays a personal, machine-local store; `.ultragoal/memory` remains the team store) — expect the index to be injected twice.
 - interview-depth: adaptive (default) = the goal skill sizes the interview to stakes × ambiguity × run length — one batch for small clear goals, multi-round for long/ambiguous/risky ones; quick = always one batch of up to ~5 questions; deep = always multi-round (intent → shape of done → scope edges → risks → verification). Saying "deep interview" or "quick" in a goal brief overrides it per-goal.
 ```

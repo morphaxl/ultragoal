@@ -76,10 +76,36 @@ if [ "$others" -gt 0 ]; then
   echo "$others other goal(s) are active in OTHER sessions of this repo — the gate does not enforce them here, so you are free to work on this session's goal (or none). /ultragoal:status lists them."
 fi
 
+# ---- native auto-memory unification (Claude Code v2.1.59+) -----------------
+# When the project's autoMemoryDirectory points at $UG/memory, Claude Code's
+# native auto memory already injects the MEMORY.md head at session start —
+# injecting it here too would pay the context twice. FAIL OPEN: any doubt
+# (no key, unreadable file, different path) -> inject as before.
+native_mem=0; amd_any=""
+for sf in "$ROOT/.claude/settings.local.json" "$ROOT/.claude/settings.json" \
+          "${CLAUDE_PROJECT_DIR:-$PWD}/.claude/settings.local.json" "${CLAUDE_PROJECT_DIR:-$PWD}/.claude/settings.json"; do
+  [ -r "$sf" ] || continue
+  amd="$(sed -n 's/.*"autoMemoryDirectory"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$sf" 2>/dev/null | head -1)"
+  [ -n "$amd" ] || continue
+  amd_any=1
+  case "$amd" in "~/"*) amd="$HOME/${amd#\~/}" ;; esac
+  amd="${amd%/}"
+  [ "$amd" = "$UG/memory" ] && native_mem=1
+  break # first file defining the key wins (local settings take precedence)
+done
+
 MEM="$UG/memory/MEMORY.md"
 if [ -r "$MEM" ]; then
-  echo "Project memory index ($UG/memory/MEMORY.md) — consult relevant topic files before substantial work. Trust [VERIFIED] claims; treat [READ] as source-dependent and [INFERRED] as hypotheses to re-check:"
-  head -c 8192 "$MEM" 2>/dev/null | head -100
+  if [ "$native_mem" = "1" ]; then
+    echo "Project memory is unified with Claude Code's native auto memory (autoMemoryDirectory -> $UG/memory): the index above/below in your context was injected natively, not duplicated here. Consult the relevant topic files in $UG/memory/ before substantial work; trust [VERIFIED] claims, re-check [INFERRED] ones."
+  else
+    echo "Project memory index ($UG/memory/MEMORY.md) — consult relevant topic files before substantial work. Trust [VERIFIED] claims; treat [READ] as source-dependent and [INFERRED] as hypotheses to re-check:"
+    head -c 8192 "$MEM" 2>/dev/null | head -100
+    am_knob="$(sed -n 's/^| auto-memory | *//p' "$UG/config.md" 2>/dev/null | head -1 | tr -d ' |')"
+    if [ "$am_knob" = "unified" ] && [ -z "$amd_any" ]; then
+      echo "Auto-memory: this repo's config unifies native auto memory with .ultragoal/memory, but this machine has no autoMemoryDirectory key yet. To stop double memory injection, merge {\"autoMemoryDirectory\": \"$UG/memory\"} into $ROOT/.claude/settings.local.json (add the key only if absent — never overwrite one)."
+    fi
+  fi
 
   last_mem="$(grep -rhoE '\[20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$UG/memory" 2>/dev/null | tr -d '[' | sort | tail -1)"
   if [ -n "$last_mem" ]; then

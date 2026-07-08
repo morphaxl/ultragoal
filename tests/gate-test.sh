@@ -365,6 +365,27 @@ rm -f "$UG/memory/facts.md"; printf '11' > "$UG/memory/.sessions"
 OUT="$(printf '{"session_id":"me"}' | "$CTX")"
 echo "$OUT" | grep -q "no evidence entries yet" && check "ctx: remember nudge when memory empty" 0 0 || check "ctx: remember nudge when memory empty" 0 1
 
+# native auto-memory unification: when autoMemoryDirectory points at UG/memory
+# the head is injected natively -> ctx must not duplicate it; anything else
+# (different path, malformed settings, no key) -> unchanged behavior, fail open
+fresh
+printf '# Memory index\n- marker: CTXMEMHEAD\n' > "$UG/memory/MEMORY.md"
+mkdir -p "$T/.claude"
+printf '{"autoMemoryDirectory": "%s"}\n' "$UG/memory" > "$T/.claude/settings.local.json"
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "CTXMEMHEAD" && check "ctx: auto-memory unified -> head skipped" 0 1 || check "ctx: auto-memory unified -> head skipped" 0 0
+echo "$OUT" | grep -q "unified with Claude Code's native auto memory" && check "ctx: auto-memory unified -> pointer line instead" 0 0 || check "ctx: auto-memory unified -> pointer line instead" 0 1
+printf '{"autoMemoryDirectory": "/somewhere/else"}\n' > "$T/.claude/settings.local.json"
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "CTXMEMHEAD" && check "ctx: auto-memory elsewhere -> normal injection" 0 0 || check "ctx: auto-memory elsewhere -> normal injection" 0 1
+printf 'not json {{{' > "$T/.claude/settings.local.json"
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "CTXMEMHEAD" && check "ctx: auto-memory malformed settings -> fail open, normal injection" 0 0 || check "ctx: auto-memory malformed settings -> fail open, normal injection" 0 1
+rm -f "$T/.claude/settings.local.json"
+printf '| auto-memory | unified |\n' > "$UG/config.md"
+OUT="$(printf '{"session_id":"me"}' | "$CTX")"
+echo "$OUT" | grep -q "no autoMemoryDirectory key yet" && check "ctx: auto-memory unified knob without local key -> nudge" 0 0 || check "ctx: auto-memory unified knob without local key -> nudge" 0 1
+
 # auto-update: spawns a throttled background update via the claude CLI; the off
 # knob and a fresh stamp both suppress it. A fake claude shim records calls.
 fresh

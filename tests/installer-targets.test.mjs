@@ -145,3 +145,58 @@ test("uninstall --codex removes only the Codex plugin and marketplace", () => {
     "codex plugin marketplace remove morphaxl",
   ]);
 });
+
+test("update prunes stale project pins whose directories no longer exist", () => {
+  const root = mkdtempSync(join(tmpdir(), "ultragoal-prune-"));
+  const binDir = makeFakeBin(root, "claude");
+  makeFakeBin(root, "codex");
+  const callLog = join(root, "calls.log");
+  const home = join(root, "home");
+  const livePin = join(root, "live-project");
+  const deadPin = join(root, "dead-project");
+  mkdirSync(livePin, { recursive: true });
+  const regPath = join(home, ".claude", "plugins", "installed_plugins.json");
+  mkdirSync(dirname(regPath), { recursive: true });
+  writeFileSync(
+    regPath,
+    JSON.stringify(
+      {
+        plugins: {
+          "ultragoal@ultragoal": [
+            { scope: "user", version: "1.11.0" },
+            { scope: "project", projectPath: livePin, version: "1.11.0" },
+            { scope: "project", projectPath: deadPin, version: "1.2.0" },
+          ],
+          "other@keep": [{ scope: "project", projectPath: deadPin, version: "0.1.0" }],
+        },
+      },
+      null,
+      2
+    )
+  );
+
+  const result = spawnSync(process.execPath, [cli, "update"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PATH: `${binDir}:${process.env.PATH}`,
+      CALL_LOG: callLog,
+      HOME: home,
+      NO_COLOR: "1",
+    },
+    encoding: "utf8",
+  });
+  const calls = readFileSync(callLog, "utf8").trim().split("\n").filter(Boolean);
+  const reg = JSON.parse(readFileSync(regPath, "utf8"));
+  rmSync(root, { recursive: true, force: true });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout + result.stderr, /Pruned 1 stale project pin/);
+  const pins = reg.plugins["ultragoal@ultragoal"];
+  assert.equal(pins.length, 2, JSON.stringify(pins));
+  assert.ok(!pins.some((pin) => pin.projectPath === deadPin), "dead pin removed");
+  assert.ok(pins.some((pin) => pin.projectPath === livePin), "live pin kept");
+  assert.deepEqual(reg.plugins["other@keep"], [{ scope: "project", projectPath: deadPin, version: "0.1.0" }], "other plugins untouched");
+  assert.ok(!calls.some((line) => line.includes(deadPin)), "no update attempted for the dead pin");
+  assert.ok(calls.some((line) => line.includes("plugin update ultragoal@ultragoal --scope project")), "live project pin updated");
+});

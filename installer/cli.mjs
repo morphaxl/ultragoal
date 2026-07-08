@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, rmSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, renameSync, rmSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import * as p from '@clack/prompts';
@@ -418,6 +418,33 @@ function runCodexHeadlessLoop({ prompt, safe }) {
   return 1;
 }
 
+function runClaudeHeadlessLoop({ brief, mode }) {
+  const maxTurns = Number.parseInt(process.env.ULTRAGOAL_RUNNER_MAX_TURNS || '25', 10);
+  const startedAt = Date.now() - 2000;
+  let res = spawnSync('claude', [...mode, '-p', `/ultragoal:goal ${brief}`], { stdio: 'inherit' });
+  if (res.error) return 1;
+  // A nonzero exit does NOT end the run: a killed, rate-limited, or
+  // refusal-terminated claude -p may still have armed a goal — the goal file,
+  // not the process exit, decides. The turn cap bounds restart pathologies.
+  for (let i = 0; i <= maxTurns; i++) {
+    const root = findUltragoalRoot(process.cwd());
+    const current = findCurrentGoalFile(root, startedAt);
+    const state = evaluateGoalFile(current);
+    if (!current) {
+      if ((res.status ?? 1) !== 0) return res.status ?? 1;
+      p.log.warn(`Claude runner did not find a goal file created or updated by this run (${state.reason}). Refusing to report success.`);
+      return 1;
+    }
+    if (state.done) return 0;
+    if (i === maxTurns) break;
+    p.log.info(`Claude runner continuing Ultragoal (${i + 1}/${maxTurns}): ${state.file}`);
+    res = spawnSync('claude', [...mode, '-p', '--continue', state.prompt], { stdio: 'inherit' });
+    if (res.error) return 1;
+  }
+  p.log.warn(`Claude runner reached ULTRAGOAL_RUNNER_MAX_TURNS=${maxTurns}. Leaving the active goal for resume.`);
+  return 1;
+}
+
 async function chooseInstallTargets() {
   const explicit = targetFlags();
   if (explicit) return explicit;
@@ -551,7 +578,9 @@ if (flag('--help') || flag('-h')) {
         --safe                 auto mode instead: tools auto-approved, guardrails stay on
         --worktree             run in a fresh git worktree — isolated checkout, so
                                parallel goals on one repo can't collide
-        --headless             non-interactive: runs the loop to completion and exits
+        --headless             non-interactive: runs the loop to completion and exits;
+                               supervised — a dead claude process is resumed against
+                               the goal file (cap: ULTRAGOAL_RUNNER_MAX_TURNS, 25)
     npx ultragoal update       update Claude Code installs — user scope and all
                                per-project pins
     npx ultragoal update --codex
@@ -625,6 +654,14 @@ if (args[0] === 'run') {
   }
   if (worktree) p.log.info('Worktree: the goal runs in a fresh checkout on its own branch — merge it when the goal is done.');
   p.outro(headless ? 'Running the goal loop headless — output follows.' : 'Handing you over to Claude Code with the goal armed.');
+  if (headless && !worktree) {
+    // Supervised: inspect the goal file after each claude -p run and resume with
+    // --continue until it proves done — survives kills, rate limits, refusals.
+    process.exit(runClaudeHeadlessLoop({ brief, mode }));
+  }
+  if (headless && worktree) {
+    p.log.info('Headless with --worktree runs single-shot: the goal lives in the worktree checkout, which the resume supervisor cannot inspect from here. To get supervised resume, create the worktree yourself, cd into it, and run without --worktree.');
+  }
   const launch = spawnSync('claude', [...mode, ...(worktree ? ['--worktree'] : []), ...(headless ? ['-p'] : []), `/ultragoal:goal ${brief}`], {
     stdio: 'inherit',
   });
@@ -656,13 +693,33 @@ if (args[0] === 'update') {
       // installs pin their version per project and are skipped by Claude Code's
       // startup auto-update, so they go stale silently — sweep them all here.
       let installs = [];
+      let reg = null;
+      const regPath = join(homedir(), '.claude', 'plugins', 'installed_plugins.json');
       try {
-        const reg = JSON.parse(readFileSync(join(homedir(), '.claude', 'plugins', 'installed_plugins.json'), 'utf8'));
+        reg = JSON.parse(readFileSync(regPath, 'utf8'));
         installs = reg.plugins?.[CLAUDE_PLUGIN] ?? [];
       } catch {
         /* registry unreadable — fall back to a plain user-scope update */
       }
       if (installs.length === 0) installs = [{ scope: 'user' }];
+
+      // Prune pins whose project directory no longer exists (deleted sandboxes,
+      // temp checkouts): they can never update and re-clutter every sweep. Only
+      // this plugin's project entries are touched; the rewrite is atomic and any
+      // failure falls back to skipping them exactly as before.
+      const stale = installs.filter((inst) => inst.projectPath && !existsSync(inst.projectPath));
+      if (stale.length > 0 && Array.isArray(reg?.plugins?.[CLAUDE_PLUGIN])) {
+        try {
+          reg.plugins[CLAUDE_PLUGIN] = installs.filter((inst) => !stale.includes(inst));
+          const tmp = `${regPath}.ultragoal-tmp`;
+          writeFileSync(tmp, JSON.stringify(reg, null, 2));
+          renameSync(tmp, regPath);
+          installs = reg.plugins[CLAUDE_PLUGIN];
+          p.log.info(`Pruned ${stale.length} stale project pin(s) whose directories no longer exist.`);
+        } catch {
+          /* pruning is best-effort — stale pins are just skipped below */
+        }
+      }
 
       for (const inst of installs) {
         const where = inst.projectPath ? `${inst.scope} scope · ${inst.projectPath}` : `${inst.scope} scope`;
@@ -1001,6 +1058,7 @@ function readKnobs(root) {
       cadence: g('verification-cadence'),
       interview: g('interview-depth'),
       autoupdate: g('auto-update'),
+      autoMemory: g('auto-memory'),
     };
   } catch {
     return {};
@@ -1033,8 +1091,28 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 | verification-cadence | ${prev.cadence || 'final'} |
 | interview-depth | ${prev.interview || 'adaptive'} |
 | auto-update | ${prev.autoupdate || 'on'} |
+| auto-memory | ${prev.autoMemory || 'unified'} |
 `
   );
+
+  // Unify Claude Code's native auto memory (v2.1.59+) with .ultragoal/memory so
+  // the index isn't injected twice and "remember X" feeds the shared brain.
+  // Per-machine by design (settings.local.json); only ADD the key — never
+  // overwrite a value the user set deliberately. Opt out: auto-memory: separate.
+  if ((prev.autoMemory || 'unified') !== 'separate') {
+    try {
+      const claudeDir = join(root, '.claude');
+      mkdirSync(claudeDir, { recursive: true });
+      const sl = join(claudeDir, 'settings.local.json');
+      const settings = existsSync(sl) ? JSON.parse(readFileSync(sl, 'utf8')) : {};
+      if (!settings.autoMemoryDirectory) {
+        settings.autoMemoryDirectory = join(ug, 'memory');
+        writeFileSync(sl, `${JSON.stringify(settings, null, 2)}\n`);
+      }
+    } catch {
+      // fail-open: unification is an optimization, never a setup blocker
+    }
+  }
 
   for (const [name, content] of Object.entries(MEMORY_FILES)) {
     const f = join(ug, 'memory', name);
@@ -1049,7 +1127,7 @@ Plain markdown, hand-editable. Skills read this file; re-run /ultragoal:setup to
 
   // .gitignore entries
   const gi = join(root, '.gitignore');
-  const wanted = ['.ultragoal/goals/active/*/.turns', '.ultragoal/goals/active/*/.rubric-hash', '.ultragoal/memory/.sessions'];
+  const wanted = ['.ultragoal/goals/active/*/.turns', '.ultragoal/goals/active/*/.rubric-hash', '.ultragoal/memory/.sessions', '.claude/settings.local.json'];
   if (picks.memory === 'local') wanted.push('.ultragoal/memory/');
   let existing = existsSync(gi) ? readFileSync(gi, 'utf8') : '';
   if (picks.memory === 'git' && /^\.ultragoal\/memory\/\s*$/m.test(existing)) {
