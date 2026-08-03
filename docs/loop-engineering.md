@@ -149,7 +149,7 @@ The first is persuasion. The second is engineering — a checkable goal, fresh-e
 
 The model is the easy part now. Design the loop.
 
-[ultragoal on GitHub](https://github.com/morphaxl/ultragoal) · `npx ultragoal`
+[ultragoal on GitHub](https://github.com/shamilkayal/ultragoal) · `npx ultragoal`
 
 ---
 

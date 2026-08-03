@@ -3,11 +3,11 @@
   "version": "1.13.0",
   "description": "Ultragoal for Codex: rubric-backed goals with bundled Codex hooks, panel verification, and a headless runner fallback.",
   "author": {
-    "name": "morphaxl",
-    "url": "https://github.com/morphaxl"
+    "name": "shamilkayal",
+    "url": "https://github.com/shamilkayal"
   },
-  "homepage": "https://github.com/morphaxl/ultragoal",
-  "repository": "https://github.com/morphaxl/ultragoal",
+  "homepage": "https://github.com/shamilkayal/ultragoal",
+  "repository": "https://github.com/shamilkayal/ultragoal",
   "license": "MIT",
   "keywords": ["codex", "goal", "rubric", "verification", "workflow"],
   "skills": "./skills/",
@@ -16,7 +16,7 @@
     "displayName": "Ultragoal for Codex",
     "shortDescription": "Hook-backed, rubric-backed goals for Codex.",
     "longDescription": "Drafts an ultragoal-style spec with checkable rubric, audits it for weak proof, then arms Codex native Goal mode against the file-backed contract. Bundles Codex Stop/SessionStart/SubagentStop hooks, custom executor/verifier roles, and a headless runner fallback for max-rigor panel verification.",
-    "developerName": "morphaxl",
+    "developerName": "shamilkayal",
     "category": "Productivity",
     "capabilities": ["Skills", "Workflow", "Hooks", "Subagents"],
     "defaultPrompt": "Use ultragoal-goal to turn this task into a rubric-backed Codex goal."

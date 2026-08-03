@@ -206,8 +206,8 @@ test("run --codex --headless refuses success when Codex creates no goal file", (
   assert.deepEqual(calls, [
     "codex --version",
     "codex --version",
-    "codex plugin marketplace add morphaxl/ultragoal",
-    "codex plugin add ultragoal-codex@morphaxl",
+    "codex plugin marketplace add shamilkayal/ultragoal",
+    "codex plugin add ultragoal-codex@shamilkayal",
     "codex --sandbox workspace-write --ask-for-approval never --dangerously-bypass-hook-trust exec $ultragoal-goal MODE: headless-autonomous. Do not ask the user questions. Make and record explicit defaults in the goal file for ambiguity, then arm and execute. Brief: make chat fast",
   ]);
   assert.match(result.stdout + result.stderr, /did not find a goal file/);
@@ -219,8 +219,8 @@ test("run --codex --safe uses interactive Codex with approval guardrails", () =>
   assert.deepEqual(calls, [
     "codex --version",
     "codex --version",
-    "codex plugin marketplace add morphaxl/ultragoal",
-    "codex plugin add ultragoal-codex@morphaxl",
+    "codex plugin marketplace add shamilkayal/ultragoal",
+    "codex plugin add ultragoal-codex@shamilkayal",
     "codex --sandbox workspace-write --ask-for-approval on-request $ultragoal-goal MODE: interactive-interview. Consult memory and repo context, ask high-leverage questions when ambiguity matters, recap the draft contract, and wait for a standalone Arm goal confirmation before arming. Brief: ship report",
   ]);
 });

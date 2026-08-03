@@ -73,8 +73,8 @@ test("installer --codex installs only the Codex plugin", () => {
   assert.deepEqual(calls, [
     "codex --version",
     "codex --version",
-    "codex plugin marketplace add morphaxl/ultragoal",
-    "codex plugin add ultragoal-codex@morphaxl",
+    "codex plugin marketplace add shamilkayal/ultragoal",
+    "codex plugin add ultragoal-codex@shamilkayal",
   ]);
 });
 
@@ -104,8 +104,8 @@ test("installer --codex skips a broken earlier Codex wrapper and uses a later wo
   assert.deepEqual(calls, [
     "codex --version",
     "codex --version",
-    "codex plugin marketplace add morphaxl/ultragoal",
-    "codex plugin add ultragoal-codex@morphaxl",
+    "codex plugin marketplace add shamilkayal/ultragoal",
+    "codex plugin add ultragoal-codex@shamilkayal",
   ]);
 });
 
@@ -115,7 +115,7 @@ test("installer --claude keeps the existing Claude project default", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.deepEqual(calls, [
     "claude --version",
-    "claude plugin marketplace add morphaxl/ultragoal",
+    "claude plugin marketplace add shamilkayal/ultragoal",
     "claude plugin install ultragoal@ultragoal --scope project",
   ]);
 });
@@ -126,12 +126,12 @@ test("installer --all installs Claude and Codex with the requested Claude scope"
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.deepEqual(calls, [
     "claude --version",
-    "claude plugin marketplace add morphaxl/ultragoal",
+    "claude plugin marketplace add shamilkayal/ultragoal",
     "claude plugin install ultragoal@ultragoal --scope user",
     "codex --version",
     "codex --version",
-    "codex plugin marketplace add morphaxl/ultragoal",
-    "codex plugin add ultragoal-codex@morphaxl",
+    "codex plugin marketplace add shamilkayal/ultragoal",
+    "codex plugin add ultragoal-codex@shamilkayal",
   ]);
 });
 
@@ -141,8 +141,8 @@ test("uninstall --codex removes only the Codex plugin and marketplace", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.deepEqual(calls, [
     "codex --version",
-    "codex plugin remove ultragoal-codex@morphaxl",
-    "codex plugin marketplace remove morphaxl",
+    "codex plugin remove ultragoal-codex@shamilkayal",
+    "codex plugin marketplace remove shamilkayal",
   ]);
 });
 

@@ -8,4 +8,4 @@ ultragoal collects no data. There is no telemetry, no analytics, and no server o
 - The skills and the verifier agent run entirely inside your Claude Code session, under your permission settings. Conversations are governed by [Anthropic's privacy policy](https://www.anthropic.com/legal/privacy), not by anything ultragoal adds.
 - The `npx ultragoal` installer contacts only the npm registry (to fetch itself), GitHub (where Claude Code's plugin system clones this repository), and your local `claude` CLI.
 
-Questions: open an issue at https://github.com/morphaxl/ultragoal/issues.
+Questions: open an issue at https://github.com/shamilkayal/ultragoal/issues.

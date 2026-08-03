@@ -24,7 +24,7 @@ fi
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 GATE_IN_CACHE="$(ls "$CODEX_HOME_DIR"/plugins/cache/*/ultragoal-codex/*/scripts/codex-goal-gate.sh 2>/dev/null | head -1)"
 if [ -z "$GATE_IN_CACHE" ]; then
-  echo "CODEX_STOP_HOOK_SMOKE=SKIPPED reason=plugin-not-installed (install: codex plugin add ultragoal-codex@morphaxl)"
+  echo "CODEX_STOP_HOOK_SMOKE=SKIPPED reason=plugin-not-installed (install: codex plugin add ultragoal-codex@shamilkayal)"
   exit 0
 fi
 

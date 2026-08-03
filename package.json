@@ -18,11 +18,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/morphaxl/ultragoal.git"
+    "url": "git+https://github.com/shamilkayal/ultragoal.git"
   },
-  "homepage": "https://github.com/morphaxl/ultragoal#readme",
-  "bugs": "https://github.com/morphaxl/ultragoal/issues",
-  "author": "morphaxl (https://github.com/morphaxl)",
+  "homepage": "https://github.com/shamilkayal/ultragoal#readme",
+  "bugs": "https://github.com/shamilkayal/ultragoal/issues",
+  "author": "shamilkayal (https://github.com/shamilkayal)",
   "license": "MIT",
   "engines": {
     "node": ">=18"

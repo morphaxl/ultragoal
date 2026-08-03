@@ -16,8 +16,8 @@ npx ultragoal --all       # Claude Code + Codex in one pass
 Manual route:
 
 ```bash
-codex plugin marketplace add morphaxl/ultragoal
-codex plugin add ultragoal-codex@morphaxl
+codex plugin marketplace add shamilkayal/ultragoal
+codex plugin add ultragoal-codex@shamilkayal
 ```
 
 Then start a new Codex session and invoke:

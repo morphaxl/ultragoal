@@ -5,11 +5,11 @@
   "version": "1.13.0",
   "description": "Tell Claude what you want once; it works until the job is verifiably done, then saves what it learned. Goals with checkable specs, independent verification, and a memory that grows.",
   "author": {
-    "name": "morphaxl",
-    "url": "https://github.com/morphaxl"
+    "name": "shamilkayal",
+    "url": "https://github.com/shamilkayal"
   },
-  "homepage": "https://github.com/morphaxl/ultragoal",
-  "repository": "https://github.com/morphaxl/ultragoal",
+  "homepage": "https://github.com/shamilkayal/ultragoal",
+  "repository": "https://github.com/shamilkayal/ultragoal",
   "license": "MIT",
   "keywords": ["goal", "loop", "autonomous", "verification", "memory", "rubric", "fable-5", "workflow"]
 }

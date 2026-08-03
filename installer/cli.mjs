@@ -6,13 +6,13 @@ import { homedir } from 'node:os';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
-const CLAUDE_MARKETPLACE = 'morphaxl/ultragoal';
+const CLAUDE_MARKETPLACE = 'shamilkayal/ultragoal';
 const CLAUDE_MARKETPLACE_NAME = 'ultragoal';
 const CLAUDE_PLUGIN = 'ultragoal@ultragoal';
-const CODEX_MARKETPLACE = 'morphaxl/ultragoal';
-const CODEX_MARKETPLACE_NAME = 'morphaxl';
-const CODEX_PLUGIN = 'ultragoal-codex@morphaxl';
-const DOCS = 'https://github.com/morphaxl/ultragoal';
+const CODEX_MARKETPLACE = 'shamilkayal/ultragoal';
+const CODEX_MARKETPLACE_NAME = 'shamilkayal';
+const CODEX_PLUGIN = 'ultragoal-codex@shamilkayal';
+const DOCS = 'https://github.com/shamilkayal/ultragoal';
 let CODEX_BIN = null;
 
 const args = process.argv.slice(2);

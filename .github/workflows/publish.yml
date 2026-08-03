@@ -5,7 +5,7 @@ name: publish
 # "bypass 2FA" enabled) at npmjs.com → Access Tokens, then add it as the
 # repo secret NPM_TOKEN (Settings → Secrets and variables → Actions).
 # After that, every GitHub Release publishes the package automatically and
-# npm shows a verified "published from morphaxl/ultragoal" provenance badge.
+# npm shows a verified "published from shamilkayal/ultragoal" provenance badge.
 
 on:
   release:

@@ -54,7 +54,7 @@ npx ultragoal
 An interactive installer walks you through it: choose **Claude Code**, **Codex**, or **both**. Claude Code remains the default for non-interactive installs (`--yes`) and can install to this project by default (it lands in `.claude/settings.json`, so teammates get it through git) or machine-wide with `--global`. If you pick Claude Code, the installer can also pre-configure the repo: the seven working-style questions, `.ultragoal/`, and the managed `CLAUDE.md` block. `--codex` installs the Codex hook-backed goal loop plugin; `--all` installs both; `uninstall` removes the selected plugins and marketplace entries. Prefer the Claude route directly? Inside Claude Code:
 
 ```text
-/plugin marketplace add morphaxl/ultragoal
+/plugin marketplace add shamilkayal/ultragoal
 /plugin install ultragoal@ultragoal
 ```
 
